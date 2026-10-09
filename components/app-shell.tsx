@@ -22,14 +22,14 @@ import { displayName } from "@/lib/profile";
 import { cn } from "@/lib/utils";
 
 const LINKS = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/workspace", label: "Workspace", icon: Radar },
   { href: "/find-partners", label: "Find Partners", icon: Users },
   { href: "/messages", label: "Messages", icon: MessageSquare },
 ];
 
 const TITLES: Record<string, string> = {
-  "/": "Dashboard",
+  "/dashboard": "Dashboard",
   "/workspace": "Quest Workspace",
   "/find-partners": "Find Partners",
   "/messages": "Messages",
@@ -116,7 +116,7 @@ function AppSidebar({
         )}
       >
         <Link
-          href="/"
+          href="/dashboard"
           onClick={onNavigate}
           className={cn("flex min-w-0 flex-1 items-center gap-2", isCollapsed && "md:flex-none")}
         >
@@ -147,7 +147,8 @@ function AppSidebar({
 
       <nav className={cn("flex flex-1 flex-col gap-1 p-3", isCollapsed && "md:px-2")}>
         {LINKS.map((link) => {
-          const active = link.href === "/" ? pathname === "/" : pathname.startsWith(link.href);
+          const active =
+            link.href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(link.href);
           const Icon = link.icon;
           return (
             <Link

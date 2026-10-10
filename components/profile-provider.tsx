@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useMemo, useSyncExternalStore } from "react";
+import { useSession } from "next-auth/react";
 
 import { buildQuestChat, messageFromYou } from "@/lib/chats";
 import { displayName, sanitizeProfile } from "@/lib/profile";
@@ -44,6 +45,9 @@ export function useIsClient() {
 }
 
 export function ProfileProvider({ children }: { children: React.ReactNode }) {
+  const { data: session } = useSession();
+  const username = session?.user?.name ?? undefined;
+
   const profileSnapshot = useSyncExternalStore(
     subscribeProfile,
     getProfileSnapshot,
@@ -69,16 +73,16 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
 
   const acceptQuest = useCallback((quest: AcceptedQuest) => {
     writeQuests([quest, ...readQuests()]);
-    const chat = buildQuestChat(quest, displayName(profile));
+    const chat = buildQuestChat(quest, displayName(profile, username));
     const existing = readChats().filter((item) => item.id !== chat.id);
     writeChats([chat, ...existing]);
     return chat.id;
-  }, [profile]);
+  }, [profile, username]);
 
   const sendMessage = useCallback((chatId: string, body: string) => {
     const text = body.trim();
     if (!text) return;
-    const message = messageFromYou(text, displayName(profile));
+    const message = messageFromYou(text, displayName(profile, username));
     writeChats(
       readChats().map((chat) =>
         chat.id === chatId
@@ -86,7 +90,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
           : chat,
       ),
     );
-  }, [profile]);
+  }, [profile, username]);
 
   const markRead = useCallback((chatId: string) => {
     const chats = readChats();

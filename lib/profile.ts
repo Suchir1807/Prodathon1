@@ -22,8 +22,17 @@ export function sanitizeProfile(value: unknown): Profile {
   };
 }
 
-export function displayName(profile: Profile) {
-  return profile.name.trim() || "You";
+export function formatUsername(username: string) {
+  const value = username.trim();
+  if (!value) return "";
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+export function displayName(profile: Profile, usernameFallback?: string) {
+  const custom = profile.name.trim();
+  if (custom) return custom;
+  const fromUsername = usernameFallback ? formatUsername(usernameFallback) : "";
+  return fromUsername || "You";
 }
 
 export function profileReady(profile: Profile) {

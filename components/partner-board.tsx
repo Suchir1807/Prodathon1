@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { SlidersHorizontal } from "lucide-react";
@@ -18,7 +18,7 @@ import { matchInsight } from "@/lib/match";
 import { profileReady } from "@/lib/profile";
 import { writeActiveWorkspace } from "@/lib/workspace";
 import type { Partner, Profile, Quest, QuestResponse } from "@/lib/types";
-import { PARTNERS } from "@/lib/users";
+import { publicUserToPartner, type PublicUser } from "@/lib/user-partner";
 import { cn } from "@/lib/utils";
 
 async function requestQuest(viewer: Profile, partner: Partner) {
@@ -93,19 +93,59 @@ export function PartnerBoard() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [open, setOpen] = useState(false);
   const [session, setSession] = useState<QuestSession | null>(null);
+  const [directory, setDirectory] = useState<Partner[]>([]);
+  const [sentInvites, setSentInvites] = useState<Set<string>>(new Set());
+  const [pendingInviteId, setPendingInviteId] = useState<string | null>(null);
   const requestId = useRef(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadUsers() {
+      try {
+        const response = await fetch("/api/users", { cache: "no-store" });
+        const data = (await response.json()) as { users?: PublicUser[] };
+        if (!response.ok || cancelled) return;
+        const fromDb = (data.users ?? []).map(publicUserToPartner);
+        if (fromDb.length > 0) {
+          setDirectory(fromDb);
+        }
+      } catch {
+        /* keep mock partners as fallback */
+      }
+    }
+    void loadUsers();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const canCompare = profile.canTeach.length > 0 || profile.wantsToLearn.length > 0;
   const complementary = filters.complementaryOnly && canCompare;
 
   const results = useMemo(() => {
-    return PARTNERS.map((partner) => ({
+    return directory.map((partner) => ({
       partner,
       insight: matchInsight(profile, partner),
     }))
       .filter(({ partner, insight }) => passesFilters(partner, insight, filters, complementary))
       .sort((left, right) => right.insight.score - left.insight.score);
-  }, [profile, filters, complementary]);
+  }, [profile, filters, complementary, directory]);
+
+  async function sendInvite(partner: Partner) {
+    setPendingInviteId(partner.id);
+    try {
+      const response = await fetch("/api/invitations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ receiverId: partner.id }),
+      });
+      if (response.ok) {
+        setSentInvites((current) => new Set(current).add(partner.id));
+      }
+    } finally {
+      setPendingInviteId(null);
+    }
+  }
 
   async function generate(partner: Partner) {
     const id = requestId.current + 1;
@@ -213,6 +253,9 @@ export function PartnerBoard() {
                   key={partner.id}
                   partner={partner}
                   insight={insight}
+                  onSendInvite={() => void sendInvite(partner)}
+                  invitePending={pendingInviteId === partner.id}
+                  inviteSent={sentInvites.has(partner.id)}
                   onPropose={() => {
                     void generate(partner);
                   }}

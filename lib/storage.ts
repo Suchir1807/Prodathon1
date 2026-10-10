@@ -18,6 +18,18 @@ export function writeProfile(profile: Profile) {
   emit(PROFILE_EVENT);
 }
 
+export function clearLocalAppState() {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(PROFILE_KEY);
+  window.localStorage.removeItem(QUESTS_KEY);
+  window.localStorage.removeItem(CHATS_KEY);
+  window.localStorage.removeItem("cofoundry.workspace");
+  emit(PROFILE_EVENT);
+  emit(QUESTS_EVENT);
+  emit(CHATS_EVENT);
+  window.dispatchEvent(new Event("cofoundry-workspace"));
+}
+
 function isQuest(value: unknown): value is Quest {
   if (!value || typeof value !== "object") return false;
   const quest = value as Quest;

@@ -39,10 +39,16 @@ export function PartnerCard({
   partner,
   insight,
   onPropose,
+  onSendInvite,
+  invitePending,
+  inviteSent,
 }: {
   partner: Partner;
   insight: MatchInsight;
   onPropose: () => void;
+  onSendInvite?: () => void;
+  invitePending?: boolean;
+  inviteSent?: boolean;
 }) {
   return (
     <article className="glass glow-card grid gap-3 rounded-xl p-4 md:grid-cols-[200px_1fr] md:grid-rows-[auto_auto]">
@@ -60,7 +66,17 @@ export function PartnerCard({
         <SkillRow label="Can teach" skills={partner.canTeach} highlighted={insight.theyTeachYou} />
         <SkillRow label="Wants to learn" skills={partner.wantsToLearn} highlighted={insight.youTeachThem} />
       </div>
-      <div className="flex justify-end">
+      <div className="flex flex-wrap justify-end gap-2">
+        {onSendInvite ? (
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={invitePending || inviteSent}
+            onClick={onSendInvite}
+          >
+            {inviteSent ? "Invite sent" : invitePending ? "Sending…" : "Send Invite"}
+          </Button>
+        ) : null}
         <Button size="sm" onClick={onPropose}>
           Propose Match
         </Button>

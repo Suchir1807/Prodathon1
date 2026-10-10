@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useMemo, useState, useSyncExternalStore } from "react";
 import { Bot, Circle, GripVertical, Rocket, Send } from "lucide-react";
 
@@ -186,16 +185,6 @@ export function QuestWorkspace() {
           Ship Project
         </Button>
       </header>
-
-      {!mission && isClient ? (
-        <p className="border-b border-amber-400/20 bg-amber-400/5 px-4 py-2 text-center text-xs text-amber-100">
-          No active mission yet.{" "}
-          <Link href="/find-partners" className="text-lime-400 underline-offset-2 hover:underline">
-            Propose a match
-          </Link>{" "}
-          to load your board.
-        </p>
-      ) : null}
 
       <div className="scrollbar-hide grid min-h-0 flex-1 grid-cols-1 gap-3 overflow-y-auto p-3 md:grid-cols-3 md:overflow-hidden md:p-4 lg:gap-4">
         <section className={cn(PANEL, "min-h-[320px] md:min-h-0")}>

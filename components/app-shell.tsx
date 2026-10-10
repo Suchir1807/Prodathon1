@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSession } from "next-auth/react";
 import {
   Hexagon,
   LayoutDashboard,
@@ -15,6 +16,7 @@ import {
   X,
 } from "lucide-react";
 
+import { InvitationsInbox } from "@/components/invitations-inbox";
 import { UserAvatar } from "@/components/user-avatar";
 import { useProfile } from "@/components/profile-provider";
 import { unreadTotal } from "@/lib/chats";
@@ -36,10 +38,17 @@ const TITLES: Record<string, string> = {
   "/profile": "Profile",
 };
 
+const AUTH_ROUTES = new Set(["/login", "/signup", "/logout", "/onboarding"]);
+
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
+
+  if (AUTH_ROUTES.has(pathname)) {
+    return <>{children}</>;
+  }
+
   const title = TITLES[pathname] ?? "CoFoundry";
 
   return (
@@ -73,13 +82,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           >
             {open ? <X className="size-4" /> : <Menu className="size-4" />}
           </button>
-          <p className="truncate text-sm text-slate-400">
+          <p className="min-w-0 flex-1 truncate text-sm text-slate-400">
             CoFoundry
             <span className="px-2 text-slate-600">/</span>
             <span className="text-white">{title}</span>
           </p>
+          <InvitationsInbox />
         </header>
-        <main>{children}</main>
+        <main key={pathname}>{children}</main>
       </div>
     </div>
   );
@@ -97,8 +107,9 @@ function AppSidebar({
   onNavigate: () => void;
 }) {
   const pathname = usePathname();
+  const { data: session } = useSession();
   const { profile, chats } = useProfile();
-  const name = displayName(profile);
+  const name = displayName(profile, session?.user?.name ?? undefined);
   const unread = unreadTotal(chats);
 
   return (
@@ -148,7 +159,9 @@ function AppSidebar({
       <nav className={cn("flex flex-1 flex-col gap-1 p-3", isCollapsed && "md:px-2")}>
         {LINKS.map((link) => {
           const active =
-            link.href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(link.href);
+            link.href === "/dashboard"
+              ? pathname === "/dashboard" || pathname === "/"
+              : pathname.startsWith(link.href);
           const Icon = link.icon;
           return (
             <Link
@@ -185,14 +198,16 @@ function AppSidebar({
       <div className={cn("border-t border-white/8 p-3", isCollapsed && "md:px-2")}>
         <Link
           href="/profile"
-          onClick={onNavigate}
+          title="View profile"
+          aria-label="View profile"
           className={cn(
-            "flex w-full items-center gap-2 rounded-md px-2 py-2 text-left hover:bg-white/5",
+            "flex w-full items-center gap-2 rounded-lg border border-white/6 bg-white/[0.02] px-2 py-2 text-left transition hover:bg-white/5",
             isCollapsed && "md:justify-center md:px-0",
+            pathname === "/profile" && "border-[#ccff00]/30 bg-slate-800/50",
           )}
         >
           <UserAvatar name={name} className="size-8 text-[10px]" />
-          <span className={cn("min-w-0", isCollapsed && "md:hidden")}>
+          <span className={cn("min-w-0 flex-1", isCollapsed && "md:hidden")}>
             <span className="block truncate text-sm text-white">{name}</span>
             <span className="block text-[11px] text-slate-500">View profile</span>
           </span>

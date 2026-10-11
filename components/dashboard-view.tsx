@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 
+import { BeaconCenter } from "@/components/beacon-center";
 import { useIsClient, useProfile } from "@/components/profile-provider";
 import { profileReady } from "@/lib/profile";
 
@@ -13,6 +14,7 @@ export function DashboardView() {
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-5 md:px-6">
+      <BeaconCenter />
       <section className="grid gap-3 sm:grid-cols-2">
         <Stat
           label="Profile completion"

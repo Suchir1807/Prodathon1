@@ -9,10 +9,12 @@ import {
   LayoutDashboard,
   Menu,
   MessageSquare,
+  Repeat2,
   PanelLeftClose,
   PanelLeftOpen,
   Radar,
   Users,
+  Zap,
   X,
 } from "lucide-react";
 
@@ -29,6 +31,8 @@ const LINKS = [
   { href: "/workspace", label: "Workspace", icon: Radar },
   { href: "/find-partners", label: "Find Partners", icon: Users },
   { href: "/messages", label: "Messages", icon: MessageSquare },
+  { href: "/trading-floor", label: "Trading Floor", icon: Repeat2 },
+  { href: "/sprint", label: "Flash Build", icon: Zap },
 ];
 
 const TITLES: Record<string, string> = {
@@ -36,6 +40,8 @@ const TITLES: Record<string, string> = {
   "/workspace": "Quest Workspace",
   "/find-partners": "Find Partners",
   "/messages": "Messages",
+  "/trading-floor": "Trading Floor",
+  "/sprint": "12-Hour Flash Build",
   "/profile": "Profile",
 };
 

@@ -13,9 +13,10 @@ export interface IWorkspace {
   users: Types.ObjectId[];
   type: WorkspaceType;
   referenceId: Types.ObjectId;
+  referenceModel: "Barter" | "Sprint";
   scratchpad: string;
   tasks: IWorkspaceTask[];
-  expiresAt: Date;
+  expiresAt?: Date;
 }
 
 const WorkspaceTaskSchema = new Schema<IWorkspaceTask>(
@@ -42,10 +43,15 @@ const WorkspaceSchema = new Schema<IWorkspace>(
       },
     },
     type: { type: String, enum: ["barter", "sprint"], required: true },
-    referenceId: { type: Schema.Types.ObjectId, required: true },
+    referenceId: {
+      type: Schema.Types.ObjectId,
+      required: true,
+      refPath: "referenceModel",
+    },
+    referenceModel: { type: String, enum: ["Barter", "Sprint"], required: true },
     scratchpad: { type: String, default: "" },
     tasks: { type: [WorkspaceTaskSchema], default: [] },
-    expiresAt: { type: Date, required: true },
+    expiresAt: { type: Date },
   },
   { timestamps: true },
 );

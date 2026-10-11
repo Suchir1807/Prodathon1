@@ -9,6 +9,7 @@ export interface IBarter {
   skillNeeded: string;
   description: string;
   status: BarterStatus;
+  createdAt?: Date;
 }
 
 const BarterSchema = new Schema<IBarter>(

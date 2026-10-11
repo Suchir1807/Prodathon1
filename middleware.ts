@@ -35,6 +35,7 @@ export const config = {
     "/onboarding",
     "/workspace",
     "/profile",
+    "/profile/:path*",
     "/dashboard",
     "/messages",
   ],

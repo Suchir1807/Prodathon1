@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 
 import { InvitationsInbox } from "@/components/invitations-inbox";
+import { GlobalUserSearch } from "@/components/global-user-search";
 import { UserAvatar } from "@/components/user-avatar";
 import { useProfile } from "@/components/profile-provider";
 import { unreadTotal } from "@/lib/chats";
@@ -87,6 +88,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <span className="px-2 text-slate-600">/</span>
             <span className="text-white">{title}</span>
           </p>
+          <GlobalUserSearch />
           <InvitationsInbox />
         </header>
         <main key={pathname}>{children}</main>

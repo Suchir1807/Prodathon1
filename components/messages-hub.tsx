@@ -1,73 +1,128 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, MessageSquare, Send, Users } from "lucide-react";
+import { useSession } from "next-auth/react";
+import { ArrowLeft, Loader2, MessageSquare, Send } from "lucide-react";
 
-import { useProfile } from "@/components/profile-provider";
 import { UserAvatar } from "@/components/user-avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { lastMessage } from "@/lib/chats";
-import type { ChatKind, Conversation } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-const TABS: { id: ChatKind; label: string }[] = [
-  { id: "dm", label: "Direct Messages" },
-  { id: "quest", label: "Quest Groups" },
-];
+type MutualContact = {
+  id: string;
+  username: string;
+  displayName: string;
+  skillsHave: string[];
+};
+
+type PersistedMessage = {
+  id: string;
+  senderId: string;
+  receiverId: string;
+  content: string;
+  timestamp: string;
+};
 
 export function MessagesHub({ initialChatId }: { initialChatId?: string }) {
   const router = useRouter();
-  const { chats, sendMessage, markRead } = useProfile();
-  const [tab, setTab] = useState<ChatKind>(
-    initialChatId?.startsWith("quest-") ? "quest" : "dm",
-  );
+  const { data: session } = useSession();
+  const currentUserId = session?.user?.id ?? "";
   const [query, setQuery] = useState("");
   const [draft, setDraft] = useState("");
-  const [activeId, setActiveId] = useState<string | null>(initialChatId ?? null);
-  const [trackedId, setTrackedId] = useState(initialChatId);
+  const [activeId, setActiveId] = useState<string | null>(() => {
+    if (!initialChatId) return null;
+    return initialChatId.startsWith("dm-") ? initialChatId.slice(3) : initialChatId;
+  });
+  const [contacts, setContacts] = useState<MutualContact[]>([]);
+  const [messages, setMessages] = useState<PersistedMessage[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState("");
   const scroller = useRef<HTMLDivElement>(null);
 
-  if (initialChatId && initialChatId !== trackedId) {
-    setTrackedId(initialChatId);
-    setActiveId(initialChatId);
-    if (initialChatId.startsWith("quest-")) setTab("quest");
-    if (initialChatId.startsWith("dm-")) setTab("dm");
-  }
+  useEffect(() => {
+    let cancelled = false;
 
-  const visible = useMemo(() => {
-    const needle = query.trim().toLowerCase();
-    return chats.filter((chat) => {
-      if (chat.kind !== tab) return false;
-      if (!needle) return true;
-      const recent = lastMessage(chat)?.body.toLowerCase() ?? "";
-      return chat.title.toLowerCase().includes(needle) || recent.includes(needle);
-    });
-  }, [chats, query, tab]);
+    async function loadMessages() {
+      try {
+        const response = await fetch("/api/messages", { cache: "no-store" });
+        const data = (await response.json()) as {
+          mutuals?: MutualContact[];
+          messages?: PersistedMessage[];
+          error?: string;
+        };
+        if (!response.ok) throw new Error(data.error ?? "Could not load messages.");
+        if (!cancelled) {
+          setContacts(data.mutuals ?? []);
+          setMessages(data.messages ?? []);
+          setError("");
+        }
+      } catch (loadError) {
+        if (!cancelled) {
+          setError(loadError instanceof Error ? loadError.message : "Could not load messages.");
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
 
-  const active = chats.find((chat) => chat.id === activeId) ?? null;
+    void loadMessages();
+    const interval = window.setInterval(() => void loadMessages(), 3000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, []);
+
+  const needle = query.trim().toLowerCase();
+  const visible = contacts.filter((contact) => {
+    const name = contact.displayName.toLowerCase();
+    return !needle || name.includes(needle) || contact.username.toLowerCase().includes(needle);
+  });
+  const active = contacts.find((contact) => contact.id === activeId) ?? null;
+  const activeMessages = messages.filter((message) =>
+    active && (
+      (message.senderId === currentUserId && message.receiverId === active.id) ||
+      (message.senderId === active.id && message.receiverId === currentUserId)
+    ),
+  );
 
   useEffect(() => {
     const node = scroller.current;
     if (!node) return;
     node.scrollTop = node.scrollHeight;
-  }, [active?.id, active?.messages.length]);
+  }, [active?.id, activeMessages.length]);
 
-  function openChat(chat: Conversation) {
-    setActiveId(chat.id);
-    setTrackedId(chat.id);
-    setTab(chat.kind);
-    markRead(chat.id);
-    router.replace(`/messages?chat=${chat.id}`, { scroll: false });
+  function openChat(contact: MutualContact) {
+    setActiveId(contact.id);
+    setError("");
+    router.replace(`/messages?chat=${contact.id}`, { scroll: false });
   }
 
-  function send() {
-    if (!active) return;
+  async function send(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!active || sending) return;
     const text = draft.trim();
     if (!text) return;
-    setDraft("");
-    sendMessage(active.id, text);
+    setSending(true);
+    setError("");
+    try {
+      const response = await fetch("/api/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ receiverId: active.id, content: text }),
+      });
+      const data = (await response.json()) as PersistedMessage & { error?: string };
+      if (!response.ok) throw new Error(data.error ?? "Could not send message.");
+      setMessages((current) => [...current, data]);
+      setDraft("");
+    } catch (sendError) {
+      setError(sendError instanceof Error ? sendError.message : "Could not send message.");
+    } finally {
+      setSending(false);
+    }
   }
 
   return (
@@ -82,58 +137,51 @@ export function MessagesHub({ initialChatId }: { initialChatId?: string }) {
           <Input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search conversations"
-            aria-label="Search conversations"
+            placeholder="Find a mutual"
+            aria-label="Find a mutual friend"
           />
-          <div className="mt-3 grid grid-cols-2 gap-1">
-            {TABS.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => setTab(item.id)}
-                className={cn(
-                  "rounded-md border-l-2 px-2 py-1.5 text-xs font-medium transition",
-                  tab === item.id
-                    ? "border-[#ccff00] bg-slate-800/80 text-[#ccff00]"
-                    : "border-transparent text-slate-400 hover:text-white",
-                )}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
+          <p className="mt-3 text-[11px] text-slate-500">Mutual connections</p>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto">
-          {visible.length === 0 ? (
-            <p className="px-4 py-8 text-sm text-slate-400">No messages yet</p>
+          {loading ? (
+            <p className="flex items-center gap-2 px-4 py-8 text-sm text-slate-400">
+              <Loader2 className="size-4 animate-spin" /> Loading mutuals…
+            </p>
+          ) : visible.length === 0 ? (
+            <p className="px-4 py-8 text-sm text-slate-400">
+              {contacts.length ? "No mutuals match that search." : "Follow each other to start a conversation."}
+            </p>
           ) : (
             <ul>
-              {visible.map((chat) => {
-                const recent = lastMessage(chat);
-                const selected = chat.id === active?.id;
+              {visible.map((contact) => {
+                const recent = [...messages].reverse().find((message) =>
+                  (message.senderId === contact.id && message.receiverId === currentUserId) ||
+                  (message.senderId === currentUserId && message.receiverId === contact.id),
+                );
+                const name = contact.displayName.trim() || contact.username;
+                const selected = contact.id === active?.id;
                 return (
-                  <li key={chat.id}>
+                  <li key={contact.id}>
                     <button
                       type="button"
-                      onClick={() => openChat(chat)}
+                      onClick={() => openChat(contact)}
                       className={cn(
                         "flex w-full items-start gap-3 border-l-2 px-4 py-3 text-left transition hover:bg-white/5",
                         selected ? "border-[#ccff00] bg-slate-800/80" : "border-transparent",
                       )}
                     >
-                      <ChatAvatar chat={chat} />
+                      <UserAvatar name={name} />
                       <span className="min-w-0 flex-1">
                         <span className="flex items-center justify-between gap-2">
-                          <span className="truncate text-sm font-medium text-white">{chat.title}</span>
-                          <span className="shrink-0 text-[10px] text-slate-500">{recent?.timeLabel}</span>
+                          <span className="truncate text-sm font-medium text-white">{name}</span>
+                          <span className="shrink-0 text-[10px] text-slate-500">
+                            {recent ? new Date(recent.timestamp).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : ""}
+                          </span>
                         </span>
                         <span className="mt-0.5 line-clamp-1 block text-xs text-slate-400">
-                          {recent?.body}
+                          {recent?.content ?? `@${contact.username}`}
                         </span>
                       </span>
-                      {chat.unread > 0 ? (
-                        <span className="mt-1 text-[11px] font-medium text-[#ccff00]">{chat.unread}</span>
-                      ) : null}
                     </button>
                   </li>
                 );
@@ -159,15 +207,17 @@ export function MessagesHub({ initialChatId }: { initialChatId?: string }) {
               >
                 <ArrowLeft />
               </Button>
-              <ChatAvatar chat={active} />
+              <UserAvatar name={active.displayName.trim() || active.username} />
               <div className="min-w-0">
-                <h2 className="truncate text-base font-semibold">{active.title}</h2>
-                <p className="truncate text-xs text-slate-400">{active.subtitle}</p>
+                <h2 className="truncate text-base font-semibold">
+                  {active.displayName.trim() || active.username}
+                </h2>
+                <p className="truncate text-xs text-slate-400">@{active.username} · mutual</p>
               </div>
             </header>
             <div ref={scroller} className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-4">
-              {active.messages.map((message) => {
-                const mine = message.senderId === "you";
+              {activeMessages.map((message) => {
+                const mine = message.senderId === currentUserId;
                 return (
                   <div key={message.id} className={cn("flex", mine ? "justify-end" : "justify-start")}>
                     <div
@@ -178,57 +228,43 @@ export function MessagesHub({ initialChatId }: { initialChatId?: string }) {
                           : "bg-slate-900/80 text-slate-100",
                       )}
                     >
-                      {active.kind === "quest" && !mine ? (
-                        <p className="mb-1 text-[11px] font-medium text-[#ccff00]">{message.senderName}</p>
-                      ) : null}
-                      <p>{message.body}</p>
+                        <p className="whitespace-pre-wrap break-words">{message.content}</p>
                       <p className={cn("mt-1 text-[10px]", mine ? "text-[#ccff00]/70" : "text-slate-500")}>
-                        {message.timeLabel}
+                          {new Date(message.timestamp).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
                       </p>
                     </div>
                   </div>
                 );
               })}
+                {activeMessages.length === 0 ? (
+                  <p className="py-8 text-center text-sm text-slate-500">Start the conversation.</p>
+                ) : null}
             </div>
-            <form
-              className="px-4 pb-4"
-              onSubmit={(event) => {
-                event.preventDefault();
-                send();
-              }}
-            >
+              <form className="px-4 pb-4" onSubmit={(event) => void send(event)}>
               <div className="glass flex items-center gap-2 rounded-full px-2 py-1">
                 <Input
                   value={draft}
                   onChange={(event) => setDraft(event.target.value)}
-                  placeholder={active.kind === "quest" ? "Message the quest group" : `Message ${active.title}`}
+                    placeholder={`Message ${active.displayName.trim() || active.username}`}
                   aria-label="Message"
                   className="h-9 border-0 bg-transparent shadow-none focus-visible:ring-0"
                 />
-                <Button type="submit" size="icon-sm" className="rounded-full" aria-label="Send" disabled={!draft.trim()}>
+                  <Button type="submit" size="icon-sm" className="rounded-full" aria-label="Send" disabled={!draft.trim() || sending}>
                   <Send />
                 </Button>
               </div>
             </form>
+              {error ? <p role="alert" className="px-5 pb-3 text-xs text-red-300">{error}</p> : null}
           </>
         ) : (
           <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 text-center">
             <MessageSquare className="size-12 text-slate-600" />
-            <p className="max-w-xs text-sm text-slate-400">No messages yet</p>
+              <p className="max-w-xs text-sm text-slate-400">
+                {error || "Choose a mutual friend to open a conversation."}
+              </p>
           </div>
         )}
       </section>
     </div>
   );
-}
-
-function ChatAvatar({ chat }: { chat: Conversation }) {
-  if (chat.kind === "quest") {
-    return (
-      <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-full border border-[#ccff00]/70 bg-[#ccff00]/10 text-[#ccff00]">
-        <Users className="size-4" />
-      </span>
-    );
-  }
-  return <UserAvatar name={chat.avatarName} />;
 }

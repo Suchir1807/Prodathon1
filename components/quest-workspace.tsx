@@ -6,8 +6,7 @@ import { Bot, Circle, GripVertical, Rocket, Send } from "lucide-react";
 import { useIsClient } from "@/components/profile-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { buildSampleMission, missionApiSnippet } from "@/lib/mission";
-import { STARTER_PROFILE } from "@/lib/catalog";
+import { missionApiSnippet } from "@/lib/mission";
 import type { ActiveMissionWorkspace } from "@/lib/workspace";
 import {
   getWorkspaceServerSnapshot,
@@ -28,12 +27,6 @@ type WorkspaceTask = {
 
 const PANEL =
   "flex flex-col overflow-hidden rounded-xl border border-slate-800 bg-slate-900/50 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-md";
-
-const FALLBACK = buildSampleMission(STARTER_PROFILE, {
-  ...STARTER_PROFILE,
-  name: "Maya Chen",
-  domains: ["FinTech"],
-});
 
 function workspaceFromSnapshot(snapshot: string): ActiveMissionWorkspace | null {
   if (!snapshot) return null;
@@ -66,10 +59,8 @@ function subscribeCountdown(onStoreChange: () => void) {
 }
 
 function formatRemaining(acceptedAt: string | undefined) {
-  const end =
-    acceptedAt !== undefined
-      ? new Date(acceptedAt).getTime() + 72 * 3_600_000
-      : Date.now() + 47 * 3_600_000 + 12 * 60_000 + 5_000;
+  if (!acceptedAt) return "00:00:00";
+  const end = new Date(acceptedAt).getTime() + 72 * 3_600_000;
   const left = Math.max(0, end - Date.now());
   const h = Math.floor(left / 3_600_000);
   const m = Math.floor((left % 3_600_000) / 60_000);
@@ -133,25 +124,20 @@ export function QuestWorkspace() {
     return workspaceFromSnapshot(snapshot) ?? readActiveWorkspace();
   }, [isClient, snapshot]);
 
-  const activeMission = useMemo((): ActiveMissionWorkspace => {
-    if (mission) return mission;
-    return {
-      ...FALLBACK,
-      partnerName: "Maya Chen",
-      acceptedAt: new Date().toISOString(),
-    };
-  }, [mission]);
-
   const remaining = useSyncExternalStore(
     subscribeCountdown,
-    () => formatRemaining(activeMission.acceptedAt),
-    () => "72:00:00",
+    () => formatRemaining(mission?.acceptedAt),
+    () => "00:00:00",
   );
 
   const [draft, setDraft] = useState("");
-  const tasks = useMemo(() => tasksFromMission(activeMission), [activeMission]);
-  const apiSnippet = useMemo(() => missionApiSnippet(activeMission), [activeMission]);
-  const mentorLine = `Curveball queued for hour 36: ${activeMission.plannedCurveball}`;
+  const tasks = useMemo(() => (mission ? tasksFromMission(mission) : []), [mission]);
+  const apiSnippet = useMemo(() => (mission ? missionApiSnippet(mission) : ""), [mission]);
+  const mentorLine = mission ? `Curveball queued for hour 36: ${mission.plannedCurveball}` : "";
+
+  if (!mission) return null;
+
+  const activeMission = mission;
 
   const todo = tasks.filter((t) => t.column === "todo");
   const done = tasks.filter((t) => t.column === "done");

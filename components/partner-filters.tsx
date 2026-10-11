@@ -12,21 +12,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DOMAIN_INTERESTS, SKILLS_I_HAVE, SKILLS_I_WANT } from "@/lib/catalog";
-import { PARTNERS } from "@/lib/users";
 import { cn } from "@/lib/utils";
 
 function unique(values: string[]) {
   return [...new Set(values)];
 }
 
-const TEACH_OPTIONS = unique([
-  ...SKILLS_I_HAVE,
-  ...PARTNERS.flatMap((partner) => partner.canTeach),
-]);
-const LEARN_OPTIONS = unique([
-  ...SKILLS_I_WANT,
-  ...PARTNERS.flatMap((partner) => partner.wantsToLearn),
-]);
+const TEACH_OPTIONS = unique([...SKILLS_I_HAVE]);
+const LEARN_OPTIONS = unique([...SKILLS_I_WANT]);
 
 export type PartnerFiltersState = {
   query: string;

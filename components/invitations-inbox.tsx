@@ -7,8 +7,6 @@ import { Inbox, Loader2 } from "lucide-react";
 import { UserAvatar } from "@/components/user-avatar";
 import { Button } from "@/components/ui/button";
 import { displayName } from "@/lib/profile";
-import { writeActiveWorkspace } from "@/lib/workspace";
-import { buildSampleMission } from "@/lib/mission";
 import { cn } from "@/lib/utils";
 
 type InviteSender = {
@@ -70,22 +68,7 @@ export function InvitationsInbox() {
 
       if (!response.ok) return;
 
-      if (status === "accepted" && data.partner) {
-        const partnerProfile = {
-          name: data.partner.displayName || data.partner.username,
-          canTeach: data.partner.skillsHave,
-          wantsToLearn: data.partner.skillsLearn,
-          domains: data.partner.domainInterests,
-        };
-        const mission = buildSampleMission(
-          { name: "", canTeach: [], wantsToLearn: [], domains: [] },
-          partnerProfile,
-        );
-        writeActiveWorkspace({
-          ...mission,
-          partnerName: partnerProfile.name,
-          acceptedAt: new Date().toISOString(),
-        });
+      if (status === "accepted") {
         setOpen(false);
         router.push("/workspace");
         return;

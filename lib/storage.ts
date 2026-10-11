@@ -1,4 +1,4 @@
-import { SEED_CHATS } from "@/lib/chats";
+import { PLACEHOLDER_CHAT_IDS } from "@/lib/chats";
 import { sanitizeProfile } from "@/lib/profile";
 import type { AcceptedQuest, Conversation, Profile, Quest } from "@/lib/types";
 
@@ -75,8 +75,7 @@ export function parseChats(value: unknown): Conversation[] {
 }
 
 export function mergeChats(stored: Conversation[]) {
-  const ids = new Set(stored.map((chat) => chat.id));
-  return [...stored, ...SEED_CHATS.filter((chat) => !ids.has(chat.id))];
+  return stored.filter((chat) => !PLACEHOLDER_CHAT_IDS.has(chat.id));
 }
 
 export function readChats() {

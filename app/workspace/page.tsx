@@ -12,28 +12,9 @@ export default function WorkspacePage() {
   const [isMatched, setIsMatched] = useState(false);
 
   useEffect(() => {
-    let cancelled = false;
-
-    async function resolveMatch() {
-      if (readActiveWorkspace()) {
-        if (!cancelled) setIsMatched(true);
-        return;
-      }
-      try {
-        const response = await fetch("/api/partnership", { cache: "no-store" });
-        const data = (await response.json()) as { matched?: boolean };
-        if (!cancelled && data.matched) {
-          setIsMatched(true);
-        }
-      } catch {
-        /* keep empty state */
-      }
+    if (readActiveWorkspace()) {
+      setIsMatched(true);
     }
-
-    void resolveMatch();
-    return () => {
-      cancelled = true;
-    };
   }, []);
 
   if (!isMatched) {
@@ -44,22 +25,14 @@ export default function WorkspacePage() {
             <Radar className="size-7" />
           </span>
           <p className="mt-6 text-base leading-relaxed text-slate-300">
-            No active mission yet. Connect with a partner to initialize the workspace.
+            Your workspace is quiet. Invite a partner to start.
           </p>
-          <div className="mt-8 flex flex-col items-stretch gap-3 sm:flex-row sm:justify-center">
+          <div className="mt-8 flex justify-center">
             <Button asChild className="h-10 px-5">
               <Link href="/find-partners">
                 <Users />
                 Find a partner
               </Link>
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="h-10 border-white/10 bg-transparent text-slate-300 hover:bg-white/5 hover:text-white"
-              onClick={() => setIsMatched(true)}
-            >
-              Simulate Match (Demo)
             </Button>
           </div>
         </div>

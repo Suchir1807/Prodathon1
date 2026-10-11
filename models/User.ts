@@ -9,6 +9,9 @@ export interface IUser {
   domainInterests: string[];
   isProfileComplete: boolean;
   partnerId?: Types.ObjectId | null;
+  followers: Types.ObjectId[];
+  following: Types.ObjectId[];
+  sprintStatus: "idle" | "searching" | "active";
 }
 
 const UserSchema = new Schema<IUser>(
@@ -33,6 +36,13 @@ const UserSchema = new Schema<IUser>(
       type: Schema.Types.ObjectId,
       ref: "User",
       default: null,
+    },
+    followers: [{ type: Schema.Types.ObjectId, ref: "User" }],
+    following: [{ type: Schema.Types.ObjectId, ref: "User" }],
+    sprintStatus: {
+      type: String,
+      enum: ["idle", "searching", "active"],
+      default: "idle",
     },
   },
   { timestamps: true, strict: true },

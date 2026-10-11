@@ -105,7 +105,7 @@ export function MessagesHub({ initialChatId }: { initialChatId?: string }) {
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto">
           {visible.length === 0 ? (
-            <p className="px-4 py-8 text-sm text-slate-400">No conversations match that search.</p>
+            <p className="px-4 py-8 text-sm text-slate-400">No messages yet</p>
           ) : (
             <ul>
               {visible.map((chat) => {
@@ -214,9 +214,7 @@ export function MessagesHub({ initialChatId }: { initialChatId?: string }) {
         ) : (
           <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 text-center">
             <MessageSquare className="size-12 text-slate-600" />
-            <p className="max-w-xs text-sm text-slate-400">
-              Select a conversation or start a new Quest to begin collaborating
-            </p>
+            <p className="max-w-xs text-sm text-slate-400">No messages yet</p>
           </div>
         )}
       </section>

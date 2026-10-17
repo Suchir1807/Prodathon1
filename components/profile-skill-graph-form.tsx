@@ -5,7 +5,11 @@ import { useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
-import { LiveIdCard } from "@/components/live-id-card";
+import {
+  LiveIdCard,
+  type ProfileSocialStats,
+  type ProfileSocialUsers,
+} from "@/components/live-id-card";
 import { ToggleChip, toggleInList } from "@/components/toggle-chip";
 import { UserAvatar } from "@/components/user-avatar";
 import { Button } from "@/components/ui/button";
@@ -59,6 +63,8 @@ function SkillSection({
 export function ProfileSkillGraphForm({
   mode,
   username,
+  stats,
+  socialUsers,
   draft,
   onDraftChange,
   saving,
@@ -69,6 +75,8 @@ export function ProfileSkillGraphForm({
 }: {
   mode: "onboarding" | "edit";
   username: string;
+  stats?: ProfileSocialStats;
+  socialUsers?: ProfileSocialUsers;
   draft: Profile;
   onDraftChange: (partial: Partial<Profile>) => void;
   saving: boolean;
@@ -235,6 +243,8 @@ export function ProfileSkillGraphForm({
         <LiveIdCard
           username={username}
           live={live}
+          stats={stats}
+          socialUsers={socialUsers}
           saving={saving || isSubmitting}
           saved={saved}
           submitLabel={submitLabel}

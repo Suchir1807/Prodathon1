@@ -10,6 +10,11 @@ import { ProfileLogoutButton } from "@/components/profile-logout-button";
 import { ProfileSkeleton } from "@/components/ui/loading-skeletons";
 import { ToggleChip } from "@/components/toggle-chip";
 import { UserAvatar } from "@/components/user-avatar";
+import {
+  ProfileSocialStatsRow,
+  type ProfileSocialStats,
+  type ProfileSocialUsers,
+} from "@/components/live-id-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -30,6 +35,10 @@ function toggleValue(list: string[], value: string) {
 function asStringList(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   return value.filter((item): item is string => typeof item === "string");
+}
+
+function socialCount(value: unknown): number {
+  return typeof value === "number" && Number.isInteger(value) && value >= 0 ? value : 0;
 }
 
 function SkillChips({
@@ -99,6 +108,15 @@ export default function ProfilePage() {
   const [skillsHave, setSkillsHave] = useState<string[]>([]);
   const [skillsLearn, setSkillsLearn] = useState<string[]>([]);
   const [domainInterests, setDomainInterests] = useState<string[]>([]);
+  const [socialStats, setSocialStats] = useState<ProfileSocialStats>({
+    sprints: 0,
+    followers: 0,
+    following: 0,
+  });
+  const [socialUsers, setSocialUsers] = useState<ProfileSocialUsers>({
+    followers: [],
+    following: [],
+  });
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -133,6 +151,8 @@ export default function ProfilePage() {
           skillsHave?: unknown;
           skillsLearn?: unknown;
           domainInterests?: unknown;
+          socialStats?: Partial<ProfileSocialStats>;
+          socialUsers?: Partial<ProfileSocialUsers>;
           error?: string;
         };
 
@@ -151,6 +171,15 @@ export default function ProfilePage() {
           setSkillsHave(nextHave);
           setSkillsLearn(nextLearn);
           setDomainInterests(nextDomains);
+          setSocialStats({
+            sprints: socialCount(data.socialStats?.sprints),
+            followers: socialCount(data.socialStats?.followers),
+            following: socialCount(data.socialStats?.following),
+          });
+          setSocialUsers({
+            followers: data.socialUsers?.followers ?? [],
+            following: data.socialUsers?.following ?? [],
+          });
           reset({
             displayName: nextName,
             skillsHave: nextHave,
@@ -375,6 +404,7 @@ export default function ProfilePage() {
                 </p>
               </div>
             </div>
+            <ProfileSocialStatsRow stats={socialStats} users={socialUsers} />
             <div className="mt-4 space-y-3">
               <IdList label="Can teach" skills={skillsHave} />
               <IdList label="Wants to learn" skills={skillsLearn} />

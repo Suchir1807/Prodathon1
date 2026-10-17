@@ -1,16 +1,16 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
+import { z } from "zod";
 
 import { findAuthorizedWorkspace } from "@/lib/authorized-workspace";
 import { generatedWorkspaceTasksSchema, workspaceTaskSchema } from "@/lib/validation/schemas";
 import type { WorkspaceTaskStatus } from "@/models/Workspace";
 
 type RouteContext = { params: Promise<{ id: string }> };
-const TASK_STATUSES: WorkspaceTaskStatus[] = ["todo", "doing", "done"];
-
-function isTaskStatus(value: unknown): value is WorkspaceTaskStatus {
-  return TASK_STATUSES.some((status) => status === value);
-}
+const moveTaskSchema = z.object({
+  taskId: z.string().min(1),
+  status: z.enum(["todo", "doing", "done"]),
+}).strict();
 
 function serializeTasks(tasks: { id: string; title: string; status: WorkspaceTaskStatus; priority?: number }[]) {
   return tasks.map((task) => ({
@@ -84,35 +84,23 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     return NextResponse.json({ error: access.error }, { status: access.status });
   }
 
-  let body: { taskId?: unknown; direction?: unknown; status?: unknown };
+  let body: unknown;
   try {
-    body = (await request.json()) as typeof body;
+    body = await request.json();
   } catch {
     return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
   }
-  if (typeof body.taskId !== "string") {
-    return NextResponse.json({ error: "A valid task ID is required." }, { status: 400 });
+  const result = moveTaskSchema.safeParse(body);
+  if (!result.success) {
+    return NextResponse.json(
+      { error: result.error.issues[0]?.message ?? "A task ID and status are required." },
+      { status: 400 },
+    );
   }
 
-  const task = access.workspace.tasks.find((item) => item.id === body.taskId);
+  const task = access.workspace.tasks.find((item) => item.id === result.data.taskId);
   if (!task) return NextResponse.json({ error: "Task not found." }, { status: 404 });
-
-  if (body.status !== undefined) {
-    if (!isTaskStatus(body.status)) {
-      return NextResponse.json({ error: "A valid task status is required." }, { status: 400 });
-    }
-    task.status = body.status;
-  } else {
-    if (body.direction !== "left" && body.direction !== "right") {
-      return NextResponse.json({ error: "A valid move direction is required." }, { status: 400 });
-    }
-    const currentIndex = TASK_STATUSES.indexOf(task.status);
-    const nextIndex = currentIndex + (body.direction === "right" ? 1 : -1);
-    if (nextIndex < 0 || nextIndex >= TASK_STATUSES.length) {
-      return NextResponse.json({ error: "Task is already at the edge of the board." }, { status: 409 });
-    }
-    task.status = TASK_STATUSES[nextIndex];
-  }
+  task.status = result.data.status;
 
   await access.workspace.save();
   return NextResponse.json({ tasks: serializeTasks(access.workspace.tasks) });

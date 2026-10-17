@@ -5,6 +5,10 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 
 import { ProfileSkillGraphForm } from "@/components/profile-skill-graph-form";
+import type {
+  ProfileSocialStats,
+  ProfileSocialUsers,
+} from "@/components/live-id-card";
 import { ProfileSkeleton } from "@/components/ui/loading-skeletons";
 import { useIsClient, useProfile } from "@/components/profile-provider";
 import { EMPTY_PROFILE } from "@/lib/catalog";
@@ -18,8 +22,14 @@ type ApiProfile = {
   skillsLearn: string[];
   domainInterests: string[];
   isProfileComplete: boolean;
+  socialStats?: Partial<ProfileSocialStats>;
+  socialUsers?: Partial<ProfileSocialUsers>;
   error?: string;
 };
+
+function socialCount(value: unknown): number {
+  return typeof value === "number" && Number.isInteger(value) && value >= 0 ? value : 0;
+}
 
 function apiToProfile(data: ApiProfile): Profile {
   return profileFromUser({
@@ -38,6 +48,15 @@ export function OnboardingForm() {
   const username = session?.user?.name ?? "";
 
   const [draft, setDraft] = useState<Profile>({ ...EMPTY_PROFILE });
+  const [socialStats, setSocialStats] = useState<ProfileSocialStats>({
+    sprints: 0,
+    followers: 0,
+    following: 0,
+  });
+  const [socialUsers, setSocialUsers] = useState<ProfileSocialUsers>({
+    followers: [],
+    following: [],
+  });
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -73,6 +92,15 @@ export function OnboardingForm() {
 
         if (!cancelled) {
           setDraft(apiToProfile(data));
+          setSocialStats({
+            sprints: socialCount(data.socialStats?.sprints),
+            followers: socialCount(data.socialStats?.followers),
+            following: socialCount(data.socialStats?.following),
+          });
+          setSocialUsers({
+            followers: data.socialUsers?.followers ?? [],
+            following: data.socialUsers?.following ?? [],
+          });
         }
       } catch {
         if (!cancelled) {
@@ -146,6 +174,8 @@ export function OnboardingForm() {
     <ProfileSkillGraphForm
       mode="onboarding"
       username={username}
+      stats={socialStats}
+      socialUsers={socialUsers}
       draft={draft}
       onDraftChange={patchDraft}
       saving={saving}

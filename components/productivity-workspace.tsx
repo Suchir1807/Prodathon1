@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, Braces, Check, ChevronDown, ChevronUp, Clock3, Code2, GripVertical, ListTodo, Loader2, MessageSquare, Plus, Save, Send, Sparkles, X } from "lucide-react";
+import { Braces, Check, ChevronDown, ChevronUp, Clock3, Code2, GripVertical, ListTodo, Loader2, MessageSquare, Plus, Save, Send, Sparkles, X } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -11,9 +11,12 @@ import {
   KeyboardSensor,
   PointerSensor,
   closestCorners,
+  pointerWithin,
   useDroppable,
   useSensor,
   useSensors,
+  type CollisionDetection,
+  type DragOverEvent,
   type DragEndEvent,
 } from "@dnd-kit/core";
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
@@ -72,16 +75,19 @@ const COLUMNS: { status: WorkspaceTaskStatus; title: string }[] = [
 ];
 const STATUS_ORDER: WorkspaceTaskStatus[] = ["todo", "doing", "done"];
 
+const taskBoardCollisionDetection: CollisionDetection = (args) => {
+  if (args.pointerCoordinates) return pointerWithin(args);
+  return closestCorners(args);
+};
+
 function SortableTaskCard({
   task,
   expired,
   pending,
-  onMove,
 }: {
   task: WorkspaceTask;
   expired: boolean;
   pending: boolean;
-  onMove: (taskId: string, direction: "left" | "right") => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: task.id,
@@ -100,55 +106,28 @@ function SortableTaskCard({
       }}
     >
       <motion.article
+        {...attributes}
+        {...listeners}
         layout
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 12 }}
         transition={{ type: "spring", stiffness: 260, damping: 20 }}
         whileHover={{ scale: 1.015 }}
-        className="rounded-md border border-white/8 bg-white/[0.025] p-3 transition-shadow hover:shadow-[0_0_20px_rgba(204,255,0,0.08)]"
+        className={cn(
+          "touch-none cursor-grab rounded-md border border-white/8 bg-white/[0.025] p-3 transition-[border-color,box-shadow,background-color] hover:border-[#ccff00]/30 hover:bg-[#ccff00]/[0.035] hover:shadow-[0_0_20px_rgba(204,255,0,0.08)] active:cursor-grabbing focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ccff00]",
+          isDragging && "cursor-grabbing",
+        )}
+        aria-label={`${task.title}. Drag to change task status.`}
       >
-        <div className="flex items-start gap-2">
-          <button
-            type="button"
-            {...attributes}
-            {...listeners}
-            aria-label={`Drag ${task.title}`}
-            className="mt-0.5 cursor-grab touch-none text-slate-600 transition-colors hover:text-[#ccff00] active:cursor-grabbing"
-          >
-            <GripVertical className="size-4" />
-          </button>
+        <div className="flex items-start gap-2" aria-hidden="true">
+          <GripVertical className="mt-0.5 size-4 shrink-0 text-slate-500" />
           <p className="min-w-0 flex-1 break-words text-sm leading-relaxed text-slate-200">{task.title}</p>
           {task.priority !== undefined ? (
             <span className="shrink-0 font-mono text-[10px] text-[#ccff00]/80">P{task.priority}</span>
           ) : null}
         </div>
-        <div className="mt-3 flex flex-wrap justify-between gap-1">
-          {index > 0 ? (
-            <Button
-              type="button"
-              size="xs"
-              variant="ghost"
-              disabled={expired || pending}
-              onClick={() => onMove(task.id, "left")}
-              aria-label={`Move ${task.title} left`}
-            >
-              <ArrowLeft /> Move Left
-            </Button>
-          ) : <span />}
-          {index < STATUS_ORDER.length - 1 ? (
-            <Button
-              type="button"
-              size="xs"
-              variant="ghost"
-              disabled={expired || pending}
-              onClick={() => onMove(task.id, "right")}
-              aria-label={`Move ${task.title} right`}
-            >
-              Move Right <ArrowRight />
-            </Button>
-          ) : null}
-        </div>
+        <p className="mt-2 pl-6 text-[10px] text-slate-400">{COLUMNS[index]?.title}</p>
         {pending ? <Loader2 className="mt-1 size-3 animate-spin text-slate-500" /> : null}
       </motion.article>
     </div>
@@ -478,6 +457,7 @@ export function ProductivityWorkspace({
   const [now, setNow] = useState<number | null>(null);
   const [scratchpadMode, setScratchpadMode] = useState<"write" | "preview">("write");
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
+  const [activeDropStatus, setActiveDropStatus] = useState<WorkspaceTaskStatus | null>(null);
   const [aiOpen, setAiOpen] = useState(false);
   const taskMutationRef = useRef(false);
   const taskMutationRevisionRef = useRef(0);
@@ -688,22 +668,29 @@ export function ProductivityWorkspace({
     }
   }
 
-  function moveTask(taskId: string, direction: "left" | "right") {
-    const task = tasks.find((item) => item.id === taskId);
-    if (!task) return;
-    const nextIndex = STATUS_ORDER.indexOf(task.status) + (direction === "right" ? 1 : -1);
-    const targetStatus = STATUS_ORDER[nextIndex];
-    if (targetStatus) void moveTaskToStatus(taskId, targetStatus);
+  function isWorkspaceTaskStatus(value: unknown): value is WorkspaceTaskStatus {
+    return value === "todo" || value === "doing" || value === "done";
+  }
+
+  function handleDragOver(event: DragOverEvent) {
+    const status = event.over?.data.current?.status;
+    setActiveDropStatus(isWorkspaceTaskStatus(status) ? status : null);
   }
 
   function handleDragEnd(event: DragEndEvent) {
     setActiveTaskId(null);
-    if (!event.over) return;
+    setActiveDropStatus(null);
+    if (!event.over || expired || pendingTask) return;
     const task = tasks.find((item) => item.id === String(event.active.id));
-    const overStatus = event.over.data.current?.status as WorkspaceTaskStatus | undefined;
-    if (task && overStatus && task.status !== overStatus) {
+    const overStatus = event.over.data.current?.status;
+    if (task && isWorkspaceTaskStatus(overStatus) && task.status !== overStatus) {
       void moveTaskToStatus(task.id, overStatus);
     }
+  }
+
+  function handleDragCancel() {
+    setActiveTaskId(null);
+    setActiveDropStatus(null);
   }
 
   function submitTaskForm(event: React.FormEvent<HTMLFormElement>) {
@@ -812,7 +799,7 @@ export function ProductivityWorkspace({
           <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
             <div>
               <h2 className="text-sm font-semibold text-white">Task board</h2>
-              <p className="mt-1 text-xs text-slate-500">Move work from next up to shipped.</p>
+              <p className="mt-1 text-xs text-slate-500">Drag tasks between columns to update their status.</p>
             </div>
             <form className="flex w-full gap-2 sm:w-auto" onSubmit={submitTaskForm} noValidate>
               <Label htmlFor="new-workspace-task" className="sr-only">New task title</Label>
@@ -834,12 +821,16 @@ export function ProductivityWorkspace({
           {boardError ? <p role="alert" className="mb-3 text-xs text-red-300">{boardError}</p> : null}
           <DndContext
             sensors={sensors}
-            collisionDetection={closestCorners}
-            onDragStart={(event) => setActiveTaskId(String(event.active.id))}
-            onDragCancel={() => setActiveTaskId(null)}
+            collisionDetection={taskBoardCollisionDetection}
+            onDragStart={(event) => {
+              setActiveTaskId(String(event.active.id));
+              setActiveDropStatus(null);
+            }}
+            onDragOver={handleDragOver}
+            onDragCancel={handleDragCancel}
             onDragEnd={handleDragEnd}
           >
-            <div className="flex gap-3 overflow-x-auto pb-3" aria-label="Task board; drag tasks between adjacent columns">
+            <div className="flex gap-3 overflow-x-auto pb-3" aria-label="Task board; drag tasks between columns">
               {COLUMNS.map((column) => {
                 const columnTasks = tasks.filter((task) => task.status === column.status);
                 return (
@@ -850,7 +841,7 @@ export function ProductivityWorkspace({
                     tasks={columnTasks}
                     expired={expired}
                     pendingTask={pendingTask}
-                    onMove={moveTask}
+                    activeDropStatus={activeDropStatus}
                   />
                 );
               })}
@@ -884,16 +875,16 @@ function TaskColumn({
   tasks,
   expired,
   pendingTask,
-  onMove,
+  activeDropStatus,
 }: {
   status: WorkspaceTaskStatus;
   title: string;
   tasks: WorkspaceTask[];
   expired: boolean;
   pendingTask: string | null;
-  onMove: (taskId: string, direction: "left" | "right") => void;
+  activeDropStatus: WorkspaceTaskStatus | null;
 }) {
-  const { setNodeRef, isOver } = useDroppable({
+  const { setNodeRef } = useDroppable({
     id: `column-${status}`,
     data: { status },
     disabled: expired || pendingTask !== null,
@@ -904,7 +895,7 @@ function TaskColumn({
       ref={setNodeRef}
       className={cn(
         "w-[min(78vw,220px)] shrink-0 border-t border-white/10 pt-3 transition-colors sm:w-[220px]",
-        isOver && "border-[#ccff00]/60 bg-[#ccff00]/[0.025]",
+        activeDropStatus === status && "border-[#ccff00]/70 bg-[#ccff00]/[0.045]",
       )}
       aria-label={title}
     >
@@ -913,7 +904,12 @@ function TaskColumn({
         <span className="min-w-6 text-right text-[11px] tabular-nums text-slate-500">{tasks.length}</span>
       </header>
       <SortableContext items={tasks.map((task) => task.id)} strategy={verticalListSortingStrategy}>
-        <div className="flex min-h-32 flex-col gap-2">
+        <div className={cn(
+          "flex min-h-32 flex-col gap-2 rounded-md border border-dashed p-2 transition-colors",
+          activeDropStatus === status
+            ? "border-[#ccff00]/60 bg-[#ccff00]/[0.06] shadow-[inset_0_0_24px_rgba(204,255,0,0.05)]"
+            : "border-transparent",
+        )}>
           <AnimatePresence initial={false}>
             {tasks.map((task) => (
               <SortableTaskCard
@@ -921,7 +917,6 @@ function TaskColumn({
                 task={task}
                 expired={expired}
                 pending={pendingTask !== null}
-                onMove={onMove}
               />
             ))}
           </AnimatePresence>

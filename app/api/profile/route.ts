@@ -1,10 +1,29 @@
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
+import { Types } from "mongoose";
 
 import { authOptions } from "@/lib/auth";
 import connectDB from "@/lib/mongodb";
 import { profileSchema } from "@/lib/validation/schemas";
+import Sprint from "@/models/Sprint";
 import User from "@/models/User";
+
+type PopulatedProfileUser = {
+  _id: Types.ObjectId;
+  username?: string;
+  displayName?: string;
+  name?: string;
+  avatar?: string;
+};
+
+function serializeSocialUsers(users: PopulatedProfileUser[] | undefined) {
+  return (users ?? []).map((user) => ({
+    id: user._id.toString(),
+    username: user.username ?? "",
+    displayName: user.displayName?.trim() || user.name?.trim() || user.username || "",
+    avatar: user.avatar ?? null,
+  }));
+}
 
 function asStringList(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
@@ -41,12 +60,33 @@ export async function GET() {
 
   try {
     await connectDB();
-    const user = await User.findOne({ username }).lean();
+    const user = await User.findOne({ username })
+      .select("username displayName skillsHave skillsLearn domainInterests isProfileComplete followers following")
+      .populate<{ followers: PopulatedProfileUser[] }>(
+        "followers",
+        "name avatar username displayName",
+      )
+      .populate<{ following: PopulatedProfileUser[] }>(
+        "following",
+        "name avatar username displayName",
+      )
+      .lean();
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    return NextResponse.json(profileBody(user));
+    const followers = serializeSocialUsers(user.followers);
+    const following = serializeSocialUsers(user.following);
+    const sprints = await Sprint.countDocuments({ users: user._id });
+    return NextResponse.json({
+      ...profileBody(user),
+      socialStats: {
+        sprints,
+        followers: followers.length,
+        following: following.length,
+      },
+      socialUsers: { followers, following },
+    });
   } catch (error) {
     console.error("Profile GET error:", error);
     return NextResponse.json({ error: "Unable to load profile." }, { status: 500 });

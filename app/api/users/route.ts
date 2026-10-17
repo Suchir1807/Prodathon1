@@ -15,7 +15,7 @@ export async function GET() {
 
   try {
     await connectDB();
-    const current = await User.findOne({ username }).select("_id").lean();
+    const current = await User.findOne({ username }).select("_id following").lean();
     if (!current) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
@@ -32,16 +32,18 @@ export async function GET() {
         domainInterests?: string[];
       }[]>();
 
-    return NextResponse.json(
-      users.map((user) => ({
+    const followingIds = new Set((current.following ?? []).map((id) => id.toString()));
+    return NextResponse.json({
+      users: users.map((user) => ({
         _id: user._id.toString(),
         username: user.username,
         displayName: user.displayName ?? "",
         skillsHave: user.skillsHave ?? [],
         skillsLearn: user.skillsLearn ?? [],
         domainInterests: user.domainInterests ?? [],
+        isFollowing: followingIds.has(user._id.toString()),
       })),
-    );
+    });
   } catch (error) {
     console.error("Users GET error:", error);
     return NextResponse.json({ error: "Unable to load users." }, { status: 500 });

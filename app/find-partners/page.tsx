@@ -14,6 +14,7 @@ type PartnerUser = {
   skillsHave: string[];
   skillsLearn: string[];
   domainInterests: string[];
+  isFollowing: boolean;
 };
 
 function SkillPills({ label, skills }: { label: string; skills: string[] }) {
@@ -39,6 +40,8 @@ export default function FindPartnersPage() {
   const [error, setError] = useState<string | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [sentIds, setSentIds] = useState<string[]>([]);
+  const [followingIds, setFollowingIds] = useState<Set<string>>(new Set());
+  const [pendingFollowId, setPendingFollowId] = useState<string | null>(null);
   const [inviteError, setInviteError] = useState("");
   const inviteRef = useRef(false);
 
@@ -55,7 +58,10 @@ export default function FindPartnersPage() {
           return;
         }
         const list = Array.isArray(data) ? data : (data.users ?? []);
-        if (!cancelled) setPartners(list);
+        if (!cancelled) {
+          setPartners(list);
+          setFollowingIds(new Set(list.filter((partner) => partner.isFollowing).map((partner) => partner._id)));
+        }
       } catch {
         if (!cancelled) setError("Network error loading partners.");
       } finally {
@@ -88,6 +94,39 @@ export default function FindPartnersPage() {
     } finally {
       setPendingId(null);
       inviteRef.current = false;
+    }
+  }
+
+  async function toggleFollow(targetUserId: string) {
+    if (pendingFollowId) return;
+    const wasFollowing = followingIds.has(targetUserId);
+    setPendingFollowId(targetUserId);
+    setInviteError("");
+    setFollowingIds((current) => {
+      const next = new Set(current);
+      if (wasFollowing) next.delete(targetUserId);
+      else next.add(targetUserId);
+      return next;
+    });
+    try {
+      const response = await fetch("/api/users/follow", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targetUserId }),
+      });
+      const data = (await response.json()) as { following?: boolean; error?: string };
+      if (!response.ok) throw new Error(data.error ?? "Unable to update follow status.");
+      if (data.following !== !wasFollowing) throw new Error("Follow status could not be confirmed.");
+    } catch (followError) {
+      setFollowingIds((current) => {
+        const next = new Set(current);
+        if (wasFollowing) next.add(targetUserId);
+        else next.delete(targetUserId);
+        return next;
+      });
+      setInviteError(followError instanceof Error ? followError.message : "Unable to update follow status.");
+    } finally {
+      setPendingFollowId(null);
     }
   }
 
@@ -128,6 +167,7 @@ export default function FindPartnersPage() {
             const name = partner.displayName.trim() || formatUsername(partner.username);
             const sent = sentIds.includes(partner._id);
             const pending = pendingId === partner._id;
+            const followPending = pendingFollowId === partner._id;
             return (
               <article
                 key={partner._id}
@@ -147,15 +187,29 @@ export default function FindPartnersPage() {
                     <SkillPills label="Domains" skills={partner.domainInterests} />
                   </div>
                 </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={pending || sent}
-                  loading={pending}
-                  onClick={() => void sendInvite(partner._id)}
-                >
-                  {sent ? "Invite sent" : pending ? "Sending…" : "Send Invite"}
-                </Button>
+                <div className="flex flex-wrap gap-3">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={pending || sent}
+                    loading={pending}
+                    onClick={() => void sendInvite(partner._id)}
+                  >
+                    {sent ? "Invite sent" : pending ? "Sending…" : "Send Invite"}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={followPending}
+                    loading={followPending}
+                    onClick={() => void toggleFollow(partner._id)}
+                    className={followingIds.has(partner._id)
+                      ? "border-neutral-700 text-neutral-400 hover:text-neutral-200"
+                      : "border-[#ccff00]/35 text-[#ccff00] hover:border-[#ccff00]/70"}
+                  >
+                    {followPending ? "Updating…" : followingIds.has(partner._id) ? "Following" : "Follow"}
+                  </Button>
+                </div>
               </article>
             );
           })}

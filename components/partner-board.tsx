@@ -96,6 +96,8 @@ export function PartnerBoard() {
   const [directory, setDirectory] = useState<Partner[]>([]);
   const [sentInvites, setSentInvites] = useState<Set<string>>(new Set());
   const [pendingInviteId, setPendingInviteId] = useState<string | null>(null);
+  const [followingIds, setFollowingIds] = useState<Set<string>>(new Set());
+  const [pendingFollowId, setPendingFollowId] = useState<string | null>(null);
   const [actionError, setActionError] = useState("");
   const requestId = useRef(0);
   const inviteRef = useRef(false);
@@ -110,6 +112,7 @@ export function PartnerBoard() {
         const data = (await response.json()) as { users?: PublicUser[] };
         if (!response.ok || cancelled) return;
         const fromDb = (data.users ?? []).map(publicUserToPartner);
+        setFollowingIds(new Set((data.users ?? []).filter((user) => user.isFollowing).map((user) => user.id)));
         if (fromDb.length > 0) {
           setDirectory(fromDb);
         }
@@ -154,6 +157,39 @@ export function PartnerBoard() {
     } finally {
       setPendingInviteId(null);
       inviteRef.current = false;
+    }
+  }
+
+  async function toggleFollow(partner: Partner) {
+    if (pendingFollowId) return;
+    const wasFollowing = followingIds.has(partner.id);
+    setPendingFollowId(partner.id);
+    setActionError("");
+    setFollowingIds((current) => {
+      const next = new Set(current);
+      if (wasFollowing) next.delete(partner.id);
+      else next.add(partner.id);
+      return next;
+    });
+    try {
+      const response = await fetch("/api/users/follow", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targetUserId: partner.id }),
+      });
+      const data = (await response.json()) as { following?: boolean; error?: string };
+      if (!response.ok) throw new Error(data.error ?? "Unable to update follow status.");
+      if (data.following !== !wasFollowing) throw new Error("Follow status could not be confirmed.");
+    } catch (error) {
+      setFollowingIds((current) => {
+        const next = new Set(current);
+        if (wasFollowing) next.add(partner.id);
+        else next.delete(partner.id);
+        return next;
+      });
+      setActionError(error instanceof Error ? error.message : "Unable to update follow status.");
+    } finally {
+      setPendingFollowId(null);
     }
   }
 
@@ -276,6 +312,9 @@ export function PartnerBoard() {
                   onSendInvite={() => void sendInvite(partner)}
                   invitePending={pendingInviteId === partner.id}
                   inviteSent={sentInvites.has(partner.id)}
+                  isFollowing={followingIds.has(partner.id)}
+                  followPending={pendingFollowId === partner.id}
+                  onToggleFollow={() => void toggleFollow(partner)}
                   proposePending={Boolean(session?.loading && session.partner.id === partner.id)}
                   proposeDisabled={Boolean(session?.loading)}
                   onPropose={() => {

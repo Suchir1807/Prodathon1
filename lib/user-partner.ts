@@ -8,6 +8,7 @@ export type PublicUser = {
   skillsHave: string[];
   skillsLearn: string[];
   domainInterests: string[];
+  isFollowing: boolean;
 };
 
 export function publicUserToPartner(user: PublicUser): Partner {

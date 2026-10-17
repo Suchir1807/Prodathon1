@@ -42,6 +42,9 @@ export function PartnerCard({
   onSendInvite,
   invitePending,
   inviteSent,
+  isFollowing,
+  followPending,
+  onToggleFollow,
   proposePending = false,
   proposeDisabled = false,
 }: {
@@ -51,6 +54,9 @@ export function PartnerCard({
   onSendInvite?: () => void;
   invitePending?: boolean;
   inviteSent?: boolean;
+  isFollowing?: boolean;
+  followPending?: boolean;
+  onToggleFollow?: () => void;
   proposePending?: boolean;
   proposeDisabled?: boolean;
 }) {
@@ -70,7 +76,7 @@ export function PartnerCard({
         <SkillRow label="Can teach" skills={partner.canTeach} highlighted={insight.theyTeachYou} />
         <SkillRow label="Wants to learn" skills={partner.wantsToLearn} highlighted={insight.youTeachThem} />
       </div>
-      <div className="flex flex-wrap justify-end gap-2">
+      <div className="flex flex-wrap justify-end gap-3">
         {onSendInvite ? (
           <Button
             size="sm"
@@ -80,6 +86,18 @@ export function PartnerCard({
             onClick={onSendInvite}
           >
             {inviteSent ? "Invite sent" : invitePending ? "Sending…" : "Send Invite"}
+          </Button>
+        ) : null}
+        {onToggleFollow ? (
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={followPending}
+            loading={followPending}
+            onClick={onToggleFollow}
+            className={isFollowing ? "border-neutral-700 text-neutral-400 hover:text-neutral-200" : "border-[#ccff00]/35 text-[#ccff00] hover:border-[#ccff00]/70"}
+          >
+            {followPending ? "Updating…" : isFollowing ? "Following" : "Follow"}
           </Button>
         ) : null}
         <Button size="sm" onClick={onPropose} loading={proposePending} disabled={proposeDisabled}>

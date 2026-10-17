@@ -6,6 +6,7 @@ import { getServerSession } from "next-auth";
 import { ProductivityWorkspace } from "@/components/productivity-workspace";
 import { authOptions } from "@/lib/auth";
 import connectDB from "@/lib/mongodb";
+import User from "@/models/User";
 import Workspace from "@/models/Workspace";
 
 export const metadata: Metadata = { title: "Productivity Workspace" };
@@ -54,8 +55,22 @@ export default async function ProductivityWorkspacePage({
     return <div>Error: User {sessionUserId} is not authorized for workspace {id}</div>;
   }
 
+  const partnerId = workspace.users.find((userId) => userId.toString() !== sessionUserId);
+  const partner = partnerId
+    ? await User.findById(partnerId).select("_id username displayName").lean()
+    : null;
+  if (!partner) {
+    return <div>Error: Workspace partner could not be found for ID {id}</div>;
+  }
+
   return (
     <ProductivityWorkspace
+      currentUserId={sessionUserId}
+      partner={{
+        id: partner._id.toString(),
+        username: partner.username,
+        displayName: partner.displayName ?? "",
+      }}
       workspace={{
         id: workspace._id.toString(),
         type: workspace.type,

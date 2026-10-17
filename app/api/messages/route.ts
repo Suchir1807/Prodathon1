@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 
 import { authOptions } from "@/lib/auth";
 import connectDB from "@/lib/mongodb";
+import { findAuthorizedWorkspace } from "@/lib/authorized-workspace";
 import Message from "@/models/Message";
 import User from "@/models/User";
 
@@ -41,6 +42,57 @@ export async function GET(request: Request) {
 
   try {
     await connectDB();
+    const workspaceId = new URL(request.url).searchParams.get("workspaceId");
+    if (workspaceId !== null) {
+      if (!workspaceId) {
+        return NextResponse.json({ error: "Invalid workspaceId." }, { status: 400 });
+      }
+      const access = await findAuthorizedWorkspace(workspaceId, true);
+      if ("error" in access) {
+        return NextResponse.json({ error: access.error }, { status: access.status });
+      }
+
+      const partnerId = access.workspace.users.find(
+        (userId) => userId.toString() !== access.current._id.toString(),
+      );
+      if (!partnerId) {
+        return NextResponse.json({ error: "Workspace partner not found." }, { status: 404 });
+      }
+
+      const partner = await User.findById(partnerId)
+        .select("_id username displayName")
+        .lean();
+      if (!partner) {
+        return NextResponse.json({ error: "Workspace partner not found." }, { status: 404 });
+      }
+
+      const messages = await Message.find({
+        workspaceId: access.workspace._id,
+        $or: [
+          { senderId: access.current._id, receiverId: partnerId },
+          { senderId: partnerId, receiverId: access.current._id },
+        ],
+      })
+        .sort({ timestamp: -1 })
+        .limit(500)
+        .lean();
+
+      return NextResponse.json({
+        partner: {
+          id: partner._id.toString(),
+          username: partner.username,
+          displayName: partner.displayName ?? "",
+        },
+        messages: messages.reverse().map((message) => ({
+          id: message._id.toString(),
+          senderId: message.senderId.toString(),
+          receiverId: message.receiverId.toString(),
+          content: message.content,
+          timestamp: message.timestamp.toISOString(),
+        })),
+      });
+    }
+
     const mutuals = await getMutuals(username);
     if (!mutuals) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
@@ -87,7 +139,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  let body: { receiverId?: unknown; content?: unknown };
+  let body: { receiverId?: unknown; content?: unknown; workspaceId?: unknown };
   try {
     body = (await request.json()) as { receiverId?: unknown; content?: unknown };
   } catch {
@@ -101,22 +153,49 @@ export async function POST(request: Request) {
   if (typeof content !== "string" || !content.trim() || content.trim().length > 5000) {
     return NextResponse.json({ error: "Message content must be between 1 and 5000 characters." }, { status: 400 });
   }
+  if (body.workspaceId !== undefined && typeof body.workspaceId !== "string") {
+    return NextResponse.json({ error: "Invalid workspaceId." }, { status: 400 });
+  }
 
   try {
     await connectDB();
     const current = await User.findOne({ username }).select("_id following").lean();
-    const target = await User.findById(receiverId).select("_id following").lean();
-    if (!current || !target) return NextResponse.json({ error: "User not found" }, { status: 404 });
+    if (!current) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
-    const mutual = (current.following ?? []).some((id) => id.toString() === receiverId) &&
-      (target.following ?? []).some((id) => id.toString() === current._id.toString());
-    if (!mutual) {
-      return NextResponse.json({ error: "Messaging is only available between mutuals." }, { status: 403 });
+    let authorizedReceiverId: typeof current._id;
+    let messageWorkspaceId: mongoose.Types.ObjectId | undefined;
+    if (typeof body.workspaceId === "string") {
+      const access = await findAuthorizedWorkspace(body.workspaceId, true);
+      if ("error" in access) {
+        return NextResponse.json({ error: access.error }, { status: access.status });
+      }
+      if (current._id.toString() !== access.current._id.toString()) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+      const partnerId = access.workspace.users.find(
+        (userId) => userId.toString() !== access.current._id.toString(),
+      );
+      if (!partnerId || partnerId.toString() !== receiverId) {
+        return NextResponse.json({ error: "Receiver is not a member of this workspace." }, { status: 403 });
+      }
+      authorizedReceiverId = partnerId;
+      messageWorkspaceId = access.workspace._id;
+    } else {
+      const target = await User.findById(receiverId).select("_id following").lean();
+      if (!target) return NextResponse.json({ error: "User not found" }, { status: 404 });
+
+      const mutual = (current.following ?? []).some((id) => id.toString() === receiverId) &&
+        (target.following ?? []).some((id) => id.toString() === current._id.toString());
+      if (!mutual) {
+        return NextResponse.json({ error: "Messaging is only available between mutuals." }, { status: 403 });
+      }
+      authorizedReceiverId = target._id;
     }
 
     const message = await Message.create({
       senderId: current._id,
-      receiverId: target._id,
+      receiverId: authorizedReceiverId,
+      ...(messageWorkspaceId ? { workspaceId: messageWorkspaceId } : {}),
       content: content.trim(),
     });
     return NextResponse.json({

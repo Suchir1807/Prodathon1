@@ -8,6 +8,10 @@ import type { WorkspaceTaskStatus } from "@/models/Workspace";
 type RouteContext = { params: Promise<{ id: string }> };
 const TASK_STATUSES: WorkspaceTaskStatus[] = ["todo", "doing", "done"];
 
+function isTaskStatus(value: unknown): value is WorkspaceTaskStatus {
+  return TASK_STATUSES.some((status) => status === value);
+}
+
 function serializeTasks(tasks: { id: string; title: string; status: WorkspaceTaskStatus }[]) {
   return tasks.map((task) => ({ id: task.id, title: task.title, status: task.status }));
 }
@@ -55,25 +59,36 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     return NextResponse.json({ error: access.error }, { status: access.status });
   }
 
-  let body: { taskId?: unknown; direction?: unknown };
+  let body: { taskId?: unknown; direction?: unknown; status?: unknown };
   try {
     body = (await request.json()) as typeof body;
   } catch {
     return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
   }
-  if (typeof body.taskId !== "string" || (body.direction !== "left" && body.direction !== "right")) {
-    return NextResponse.json({ error: "Task and move direction are required." }, { status: 400 });
+  if (typeof body.taskId !== "string") {
+    return NextResponse.json({ error: "A valid task ID is required." }, { status: 400 });
   }
 
   const task = access.workspace.tasks.find((item) => item.id === body.taskId);
   if (!task) return NextResponse.json({ error: "Task not found." }, { status: 404 });
-  const currentIndex = TASK_STATUSES.indexOf(task.status);
-  const nextIndex = currentIndex + (body.direction === "right" ? 1 : -1);
-  if (nextIndex < 0 || nextIndex >= TASK_STATUSES.length) {
-    return NextResponse.json({ error: "Task is already at the edge of the board." }, { status: 409 });
+
+  if (body.status !== undefined) {
+    if (!isTaskStatus(body.status)) {
+      return NextResponse.json({ error: "A valid task status is required." }, { status: 400 });
+    }
+    task.status = body.status;
+  } else {
+    if (body.direction !== "left" && body.direction !== "right") {
+      return NextResponse.json({ error: "A valid move direction is required." }, { status: 400 });
+    }
+    const currentIndex = TASK_STATUSES.indexOf(task.status);
+    const nextIndex = currentIndex + (body.direction === "right" ? 1 : -1);
+    if (nextIndex < 0 || nextIndex >= TASK_STATUSES.length) {
+      return NextResponse.json({ error: "Task is already at the edge of the board." }, { status: 409 });
+    }
+    task.status = TASK_STATUSES[nextIndex];
   }
 
-  task.status = TASK_STATUSES[nextIndex];
   await access.workspace.save();
   return NextResponse.json({ tasks: serializeTasks(access.workspace.tasks) });
 }

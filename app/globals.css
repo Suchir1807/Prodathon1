@@ -134,6 +134,113 @@
   display: none;
 }
 
+.workspace-markdown {
+  overflow-wrap: anywhere;
+}
+
+.workspace-markdown h1,
+.workspace-markdown h2,
+.workspace-markdown h3 {
+  margin: 1.25rem 0 0.6rem;
+  font-weight: 600;
+  color: #e2e8f0;
+}
+
+.workspace-markdown h1 {
+  font-size: 1.35rem;
+}
+
+.workspace-markdown h2 {
+  font-size: 1.15rem;
+}
+
+.workspace-markdown h3 {
+  font-size: 1rem;
+}
+
+.workspace-markdown p,
+.workspace-markdown ul,
+.workspace-markdown ol,
+.workspace-markdown blockquote {
+  margin: 0.65rem 0;
+}
+
+.workspace-markdown ul,
+.workspace-markdown ol {
+  padding-left: 1.4rem;
+}
+
+.workspace-markdown ul {
+  list-style: disc;
+}
+
+.workspace-markdown ol {
+  list-style: decimal;
+}
+
+.workspace-markdown a {
+  color: #ccff00;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.workspace-markdown blockquote {
+  border-left: 2px solid rgba(204, 255, 0, 0.45);
+  padding-left: 0.8rem;
+  color: #94a3b8;
+}
+
+.workspace-markdown :not(pre) > code {
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 0.25rem;
+  background: rgba(148, 163, 184, 0.08);
+  padding: 0.1rem 0.3rem;
+  color: #d9f99d;
+}
+
+.workspace-markdown pre {
+  overflow-x: auto;
+  margin: 0.8rem 0;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 0.45rem;
+  background: #080b12;
+  padding: 0.85rem;
+}
+
+.workspace-markdown pre code {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 0.8rem;
+}
+
+.workspace-markdown .hljs-comment,
+.workspace-markdown .hljs-quote {
+  color: #64748b;
+}
+
+.workspace-markdown .hljs-keyword,
+.workspace-markdown .hljs-selector-tag,
+.workspace-markdown .hljs-literal {
+  color: #c4b5fd;
+}
+
+.workspace-markdown .hljs-string,
+.workspace-markdown .hljs-attr,
+.workspace-markdown .hljs-template-tag {
+  color: #86efac;
+}
+
+.workspace-markdown .hljs-number,
+.workspace-markdown .hljs-built_in,
+.workspace-markdown .hljs-type {
+  color: #7dd3fc;
+}
+
+.workspace-markdown .hljs-title,
+.workspace-markdown .hljs-function,
+.workspace-markdown .hljs-section {
+  color: #fde68a;
+}
+
 @keyframes quest-status {
   0% {
     opacity: 0;

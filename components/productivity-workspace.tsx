@@ -39,7 +39,7 @@ import {
   type SprintAssistantCommand,
   type SprintAssistantResult,
 } from "@/lib/ai/sprint-assistant";
-import type { WorkspaceTaskStatus, WorkspaceType } from "@/models/Workspace";
+import type { WorkspaceStatus, WorkspaceTaskStatus, WorkspaceType } from "@/models/Workspace";
 
 type WorkspaceTask = {
   id: string;
@@ -51,6 +51,7 @@ type WorkspaceTask = {
 type WorkspaceData = {
   id: string;
   type: WorkspaceType;
+  status: WorkspaceStatus;
   scratchpad: string;
   tasks: WorkspaceTask[];
   expiresAt: string | null;
@@ -455,12 +456,16 @@ export function ProductivityWorkspace({
   const [boardError, setBoardError] = useState("");
   const [scratchpadError, setScratchpadError] = useState("");
   const [now, setNow] = useState<number | null>(null);
+  const [workspaceStatus, setWorkspaceStatus] = useState(workspace.status);
+  const [completionError, setCompletionError] = useState("");
+  const [completionRetry, setCompletionRetry] = useState(0);
   const [scratchpadMode, setScratchpadMode] = useState<"write" | "preview">("write");
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const [activeDropStatus, setActiveDropStatus] = useState<WorkspaceTaskStatus | null>(null);
   const [aiOpen, setAiOpen] = useState(false);
   const taskMutationRef = useRef(false);
   const taskMutationRevisionRef = useRef(0);
+  const completionRequestRef = useRef(false);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -481,6 +486,39 @@ export function ProductivityWorkspace({
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(timer);
   }, [workspace.expiresAt]);
+
+  const secondsLeft = workspace.expiresAt && now !== null
+    ? Math.max(0, Math.floor((new Date(workspace.expiresAt).getTime() - now) / 1000))
+    : null;
+  const expired = secondsLeft === 0;
+
+  useEffect(() => {
+    if (
+      workspace.type !== "sprint" ||
+      secondsLeft !== 0 ||
+      workspaceStatus !== "active" ||
+      completionRequestRef.current
+    ) {
+      return;
+    }
+
+    completionRequestRef.current = true;
+    setCompletionError("");
+    void (async () => {
+      try {
+        const response = await fetch(`/api/workspaces/${workspace.id}/complete`, {
+          method: "PATCH",
+        });
+        const data = (await response.json()) as { status?: WorkspaceStatus; error?: string };
+        if (!response.ok) throw new Error(data.error ?? "Unable to complete sprint.");
+        if (data.status !== "completed") throw new Error("The sprint completion was not confirmed.");
+        setWorkspaceStatus("completed");
+      } catch (error) {
+        completionRequestRef.current = false;
+        setCompletionError(error instanceof Error ? error.message : "Unable to complete sprint.");
+      }
+    })();
+  }, [completionRetry, secondsLeft, workspace.id, workspace.type, workspaceStatus]);
 
   useEffect(() => {
     if (!dirtyRef.current) return;
@@ -697,10 +735,6 @@ export function ProductivityWorkspace({
     void handleSubmit(addTask)(event);
   }
 
-  const secondsLeft = workspace.expiresAt && now !== null
-    ? Math.max(0, Math.floor((new Date(workspace.expiresAt).getTime() - now) / 1000))
-    : null;
-  const expired = secondsLeft === 0;
   const countdown = secondsLeft === null
     ? "--:--:--"
     : [Math.floor(secondsLeft / 3600), Math.floor((secondsLeft % 3600) / 60), secondsLeft % 60]
@@ -731,6 +765,19 @@ export function ProductivityWorkspace({
           <Sparkles /> {aiOpen ? "Close AI" : "AI Accelerate"}
         </Button>
       </header>
+
+      {completionError ? (
+        <p role="alert" className="mb-4 flex flex-wrap items-center gap-2 text-sm text-red-300">
+          Sprint completion could not be saved: {completionError}
+          <button
+            type="button"
+            className="underline underline-offset-2 hover:text-white"
+            onClick={() => setCompletionRetry((attempt) => attempt + 1)}
+          >
+            Retry
+          </button>
+        </p>
+      ) : null}
 
       {aiOpen ? (
         <SprintAssistantPanel

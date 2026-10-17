@@ -29,7 +29,7 @@ export default async function ProductivityWorkspacePage({
   }
 
   const workspace = await Workspace.findById(id)
-    .select("_id users type scratchpad tasks expiresAt")
+    .select("_id users type status scratchpad tasks expiresAt")
     .lean();
   console.log(
     "[workspace] Fetched workspace:",
@@ -74,6 +74,7 @@ export default async function ProductivityWorkspacePage({
       workspace={{
         id: workspace._id.toString(),
         type: workspace.type,
+        status: workspace.status ?? "active",
         scratchpad: workspace.scratchpad ?? "",
         tasks: workspace.tasks.map((task) => ({
           id: task.id,

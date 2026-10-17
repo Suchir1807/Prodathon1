@@ -5,8 +5,8 @@ import { Types } from "mongoose";
 import { authOptions } from "@/lib/auth";
 import connectDB from "@/lib/mongodb";
 import { profileSchema } from "@/lib/validation/schemas";
-import Sprint from "@/models/Sprint";
 import User from "@/models/User";
+import Workspace from "@/models/Workspace";
 
 type PopulatedProfileUser = {
   _id: Types.ObjectId;
@@ -77,7 +77,11 @@ export async function GET() {
 
     const followers = serializeSocialUsers(user.followers);
     const following = serializeSocialUsers(user.following);
-    const sprints = await Sprint.countDocuments({ users: user._id });
+    const sprints = await Workspace.countDocuments({
+      users: user._id,
+      type: "sprint",
+      status: "completed",
+    });
     return NextResponse.json({
       ...profileBody(user),
       socialStats: {

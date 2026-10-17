@@ -1,6 +1,7 @@
 import mongoose, { type Model, Schema, Types } from "mongoose";
 
 export type WorkspaceType = "barter" | "sprint";
+export type WorkspaceStatus = "active" | "completed" | "abandoned";
 export type WorkspaceTaskStatus = "todo" | "doing" | "done";
 
 export interface IWorkspaceTask {
@@ -13,6 +14,7 @@ export interface IWorkspaceTask {
 export interface IWorkspace {
   users: Types.ObjectId[];
   type: WorkspaceType;
+  status: WorkspaceStatus;
   referenceId: Types.ObjectId;
   referenceModel: "Barter" | "Sprint";
   scratchpad: string;
@@ -45,6 +47,12 @@ const WorkspaceSchema = new Schema<IWorkspace>(
       },
     },
     type: { type: String, enum: ["barter", "sprint"], required: true },
+    status: {
+      type: String,
+      enum: ["active", "completed", "abandoned"],
+      default: "active",
+      required: true,
+    },
     referenceId: {
       type: Schema.Types.ObjectId,
       required: true,
@@ -58,7 +66,7 @@ const WorkspaceSchema = new Schema<IWorkspace>(
   { timestamps: true },
 );
 
-WorkspaceSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+WorkspaceSchema.index({ expiresAt: 1 }, { name: "workspace_expiry_lookup" });
 WorkspaceSchema.index({ users: 1, expiresAt: 1 });
 
 const Workspace: Model<IWorkspace> =

@@ -30,7 +30,23 @@ export default async function connectDB(): Promise<typeof mongoose> {
   }
 
   if (!cached.promise) {
-    cached.promise = mongoose.connect(MONGODB_URI);
+    cached.promise = mongoose.connect(MONGODB_URI).then(async (connection) => {
+      const db = connection.connection.db;
+      if (db) {
+        const [workspaceCollection] = await db
+          .listCollections({ name: "workspaces" }, { nameOnly: true })
+          .toArray();
+        if (workspaceCollection) {
+          const indexes = await db.collection("workspaces").listIndexes().toArray();
+          for (const index of indexes) {
+            if (index.expireAfterSeconds !== undefined && index.key.expiresAt === 1) {
+              await db.collection("workspaces").dropIndex(index.name);
+            }
+          }
+        }
+      }
+      return connection;
+    });
   }
 
   cached.conn = await cached.promise;

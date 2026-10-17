@@ -20,6 +20,7 @@ import {
 
 import { InvitationsInbox } from "@/components/invitations-inbox";
 import { GlobalUserSearch } from "@/components/global-user-search";
+import { NotificationBell } from "@/components/notification-bell";
 import { UserAvatar } from "@/components/user-avatar";
 import { useProfile } from "@/components/profile-provider";
 import { unreadTotal } from "@/lib/chats";
@@ -103,6 +104,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <span className="text-white">{title}</span>
           </p>
           <GlobalUserSearch />
+          <NotificationBell />
           <InvitationsInbox />
         </header>
         <main id="main-content" key={pathname} tabIndex={-1}>{children}</main>

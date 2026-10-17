@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 
 import { authOptions } from "@/lib/auth";
 import connectDB from "@/lib/mongodb";
+import Notification from "@/models/Notification";
 import User from "@/models/User";
 
 export async function POST(request: Request) {
@@ -51,6 +52,12 @@ export async function POST(request: Request) {
 
       await User.updateOne({ _id: target._id }, update, { session: transaction });
       await User.updateOne({ _id: current._id }, reverseUpdate, { session: transaction });
+      if (!alreadyFollowing) {
+        await Notification.create(
+          [{ recipient: target._id, sender: current._id, type: "follow" }],
+          { session: transaction },
+        );
+      }
       result = {
         following: !alreadyFollowing,
         followerCount: target.followers.length + (alreadyFollowing ? -1 : 1),

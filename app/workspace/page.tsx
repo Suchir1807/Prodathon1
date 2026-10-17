@@ -1,21 +1,25 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { Radar, Users } from "lucide-react";
 
 import { QuestWorkspace } from "@/components/quest-workspace";
 import { Button } from "@/components/ui/button";
-import { readActiveWorkspace } from "@/lib/workspace";
+import {
+  getWorkspaceServerSnapshot,
+  getWorkspaceSnapshot,
+  readActiveWorkspace,
+  subscribeWorkspace,
+} from "@/lib/workspace";
 
 export default function WorkspacePage() {
-  const [isMatched, setIsMatched] = useState(false);
-
-  useEffect(() => {
-    if (readActiveWorkspace()) {
-      setIsMatched(true);
-    }
-  }, []);
+  const snapshot = useSyncExternalStore(
+    subscribeWorkspace,
+    getWorkspaceSnapshot,
+    getWorkspaceServerSnapshot,
+  );
+  const isMatched = Boolean(snapshot && readActiveWorkspace());
 
   if (!isMatched) {
     return (

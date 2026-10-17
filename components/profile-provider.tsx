@@ -73,11 +73,11 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
 
   const acceptQuest = useCallback((quest: AcceptedQuest) => {
     writeQuests([quest, ...readQuests()]);
-    const chat = buildQuestChat(quest, displayName(profile, username));
+    const chat = buildQuestChat(quest);
     const existing = readChats().filter((item) => item.id !== chat.id);
     writeChats([chat, ...existing]);
     return chat.id;
-  }, [profile, username]);
+  }, []);
 
   const sendMessage = useCallback((chatId: string, body: string) => {
     const text = body.trim();

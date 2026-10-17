@@ -11,7 +11,7 @@ export function questChatId(questId: string) {
   return `quest-${questId}`;
 }
 
-export function buildQuestChat(quest: AcceptedQuest, _senderName: string): Conversation {
+export function buildQuestChat(quest: AcceptedQuest): Conversation {
   return {
     id: questChatId(quest.id),
     kind: "quest",

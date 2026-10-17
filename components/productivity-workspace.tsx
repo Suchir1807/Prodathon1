@@ -767,16 +767,15 @@ export function ProductivityWorkspace({
               {saveStatus === "saving" ? "Saving" : saveStatus === "saved" ? "Saved" : saveStatus === "error" ? "Save failed" : "Unsaved"}
             </span>
           </div>
-          <div className="mb-2 flex gap-1" role="tablist" aria-label="Scratchpad mode">
+          <div className="mb-2 flex gap-1" aria-label="Scratchpad mode">
             {(["write", "preview"] as const).map((mode) => (
               <button
                 key={mode}
                 type="button"
-                role="tab"
-                aria-selected={scratchpadMode === mode}
+                aria-pressed={scratchpadMode === mode}
                 onClick={() => setScratchpadMode(mode)}
                 className={cn(
-                  "rounded px-2.5 py-1 text-xs capitalize transition-colors",
+                  "rounded px-2.5 py-1 text-xs capitalize transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ccff00]",
                   scratchpadMode === mode ? "bg-[#ccff00]/10 text-[#ccff00]" : "text-slate-500 hover:text-slate-200",
                 )}
               >
@@ -789,7 +788,6 @@ export function ProductivityWorkspace({
               <Label htmlFor="workspace-scratchpad" className="sr-only">Shared Markdown scratchpad</Label>
               <textarea
                 id="workspace-scratchpad"
-                role="tabpanel"
                 value={scratchpad}
                 onChange={(event) => editScratchpad(event.target.value)}
                 disabled={expired}
@@ -799,7 +797,7 @@ export function ProductivityWorkspace({
               />
             </>
           ) : (
-            <div role="tabpanel" aria-label="Markdown preview" className="workspace-markdown min-h-[55dvh] flex-1 overflow-y-auto rounded-md border border-white/10 bg-[#080d17] p-4 text-sm leading-relaxed text-slate-300">
+            <div aria-label="Markdown preview" className="workspace-markdown min-h-[55dvh] flex-1 overflow-y-auto rounded-md border border-white/10 bg-[#080d17] p-4 text-sm leading-relaxed text-slate-300">
               {scratchpad ? (
                 <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]}>
                   {scratchpad}

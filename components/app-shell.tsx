@@ -68,6 +68,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           onClick={() => setOpen(false)}
         />
       ) : null}
+      <a
+        href="#main-content"
+        className="sr-only z-50 rounded-md bg-[#ccff00] px-4 py-2 font-medium text-[#0a0f1c] focus:not-sr-only focus:fixed focus:top-2 focus:left-2"
+      >
+        Skip to main content
+      </a>
       <AppSidebar
         open={open}
         isCollapsed={isCollapsed}
@@ -85,6 +91,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             type="button"
             className="inline-flex size-8 items-center justify-center rounded-md text-slate-300 md:hidden"
             aria-label={open ? "Close navigation" : "Open navigation"}
+            aria-expanded={open}
+            aria-controls="primary-navigation"
             onClick={() => setOpen((current) => !current)}
           >
             {open ? <X className="size-4" /> : <Menu className="size-4" />}
@@ -97,7 +105,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <GlobalUserSearch />
           <InvitationsInbox />
         </header>
-        <main key={pathname}>{children}</main>
+        <main id="main-content" key={pathname} tabIndex={-1}>{children}</main>
       </div>
     </div>
   );
@@ -122,6 +130,8 @@ function AppSidebar({
 
   return (
     <aside
+      id="primary-navigation"
+      aria-label="Primary navigation"
       className={cn(
         "glass fixed inset-y-0 left-0 z-40 flex w-60 flex-col overflow-hidden border-r border-white/8 transition-all duration-300 md:translate-x-0",
         isCollapsed && "md:w-16",
@@ -150,6 +160,8 @@ function AppSidebar({
           type="button"
           className="hidden size-8 shrink-0 items-center justify-center rounded-md text-slate-400 transition hover:bg-white/5 hover:text-[#ccff00] md:inline-flex"
           aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          aria-expanded={!isCollapsed}
+          aria-controls="primary-navigation"
           onClick={onToggleCollapse}
         >
           {isCollapsed ? <PanelLeftOpen className="size-4" /> : <PanelLeftClose className="size-4" />}
@@ -176,6 +188,7 @@ function AppSidebar({
               key={link.href}
               href={link.href}
               aria-label={link.label}
+              aria-current={active ? "page" : undefined}
               title={link.label}
               onClick={onNavigate}
               className={cn(

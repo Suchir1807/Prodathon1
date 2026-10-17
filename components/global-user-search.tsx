@@ -68,15 +68,19 @@ export function GlobalUserSearch() {
         onBlur={() => window.setTimeout(() => setFocused(false), 120)}
         placeholder="Search founders"
         aria-label="Search founders or skills"
-        aria-expanded={showResults}
         className="h-9 border-white/10 bg-white/[0.03] pl-9 text-sm"
       />
       {showResults ? (
-        <div className="absolute top-full right-0 left-0 z-50 mt-2 overflow-hidden rounded-lg border border-white/10 bg-[#10182b] shadow-2xl">
+        <div
+          id="founder-search-results"
+          aria-label="Founder search results"
+          aria-live="polite"
+          className="absolute top-full right-0 left-0 z-50 mt-2 overflow-hidden rounded-lg border border-white/10 bg-[#10182b] shadow-2xl"
+        >
           {loading ? (
             <p className="px-3 py-3 text-xs text-slate-400">Searching…</p>
           ) : users.length ? (
-            <ul role="listbox" aria-label="Founders">
+            <ul aria-label="Founders">
               {users.map((user) => {
                 const name = user.displayName.trim() || formatUsername(user.username);
                 return (

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { MotionConfig } from "framer-motion";
 
 import { AppShell } from "@/components/app-shell";
 import { AppToaster } from "@/components/app-toaster";
@@ -33,12 +34,14 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${geistMono.variable} dark h-full antialiased`}
     >
       <body className="min-h-full">
-        <AuthSessionProvider>
-          <ProfileProvider>
-            <AppShell>{children}</AppShell>
-          </ProfileProvider>
-          <AppToaster />
-        </AuthSessionProvider>
+        <MotionConfig reducedMotion="user">
+          <AuthSessionProvider>
+            <ProfileProvider>
+              <AppShell>{children}</AppShell>
+            </ProfileProvider>
+            <AppToaster />
+          </AuthSessionProvider>
+        </MotionConfig>
       </body>
     </html>
   );

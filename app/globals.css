@@ -88,6 +88,10 @@
   * {
     @apply border-border outline-ring/50;
   }
+  :focus-visible {
+    outline: 2px solid #ccff00;
+    outline-offset: 2px;
+  }
   html {
     @apply font-sans;
     color-scheme: dark;
@@ -104,6 +108,13 @@
   h2,
   h3 {
     color: #ffffff;
+  }
+}
+
+@layer utilities {
+  .text-slate-500,
+  .text-slate-600 {
+    color: #94a3b8;
   }
 }
 

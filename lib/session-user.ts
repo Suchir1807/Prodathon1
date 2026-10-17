@@ -2,7 +2,7 @@ import { getServerSession } from "next-auth";
 
 import { authOptions } from "@/lib/auth";
 import connectDB from "@/lib/mongodb";
-import User, { type IUser } from "@/models/User";
+import User from "@/models/User";
 
 export async function getSessionUsername() {
   const session = await getServerSession(authOptions);

@@ -96,7 +96,11 @@ export function PartnerBoard() {
   const [directory, setDirectory] = useState<Partner[]>([]);
   const [sentInvites, setSentInvites] = useState<Set<string>>(new Set());
   const [pendingInviteId, setPendingInviteId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState("");
   const requestId = useRef(0);
+  const inviteRef = useRef(false);
+  const generationRef = useRef(false);
+  const acceptRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -132,22 +136,30 @@ export function PartnerBoard() {
   }, [profile, filters, complementary, directory]);
 
   async function sendInvite(partner: Partner) {
+    if (inviteRef.current) return;
+    inviteRef.current = true;
     setPendingInviteId(partner.id);
+    setActionError("");
     try {
       const response = await fetch("/api/invitations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ receiverId: partner.id }),
       });
-      if (response.ok) {
-        setSentInvites((current) => new Set(current).add(partner.id));
-      }
+      const data = (await response.json()) as { error?: string };
+      if (!response.ok) throw new Error(data.error ?? "Unable to send invite.");
+      setSentInvites((current) => new Set(current).add(partner.id));
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Unable to send invite.");
     } finally {
       setPendingInviteId(null);
+      inviteRef.current = false;
     }
   }
 
   async function generate(partner: Partner) {
+    if (generationRef.current) return;
+    generationRef.current = true;
     const id = requestId.current + 1;
     requestId.current = id;
     setOpen(true);
@@ -177,21 +189,28 @@ export function PartnerBoard() {
         result: null,
         accepted: false,
       });
+    } finally {
+      generationRef.current = false;
     }
   }
 
   async function accept(quest: Quest) {
-    if (!session?.result?.mission) return;
-    const mission = session.result.mission;
-    writeActiveWorkspace({
-      ...mission,
-      partnerName: session.partner.name,
-      acceptedAt: new Date().toISOString(),
-    });
-    acceptQuest(acceptedQuest(session.partner, quest));
-    setSession((current) => (current ? { ...current, accepted: true } : current));
-    await new Promise((resolve) => window.setTimeout(resolve, 1500));
-    router.push("/workspace");
+    if (acceptRef.current || !session?.result?.mission) return;
+    acceptRef.current = true;
+    try {
+      const mission = session.result.mission;
+      writeActiveWorkspace({
+        ...mission,
+        partnerName: session.partner.name,
+        acceptedAt: new Date().toISOString(),
+      });
+      acceptQuest(acceptedQuest(session.partner, quest));
+      setSession((current) => (current ? { ...current, accepted: true } : current));
+      await new Promise((resolve) => window.setTimeout(resolve, 1500));
+      router.push("/workspace");
+    } finally {
+      acceptRef.current = false;
+    }
   }
 
   return (
@@ -234,6 +253,7 @@ export function PartnerBoard() {
         </aside>
 
         <div className="min-w-0 flex-1">
+          {actionError ? <p role="alert" className="mb-3 text-xs text-rose-400">{actionError}</p> : null}
           <p className="mb-3 text-sm text-muted-foreground">
             {results.length} partner{results.length === 1 ? "" : "s"}
           </p>
@@ -256,6 +276,8 @@ export function PartnerBoard() {
                   onSendInvite={() => void sendInvite(partner)}
                   invitePending={pendingInviteId === partner.id}
                   inviteSent={sentInvites.has(partner.id)}
+                  proposePending={Boolean(session?.loading && session.partner.id === partner.id)}
+                  proposeDisabled={Boolean(session?.loading)}
                   onPropose={() => {
                     void generate(partner);
                   }}

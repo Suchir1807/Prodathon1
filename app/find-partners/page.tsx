@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 
 import { UserAvatar } from "@/components/user-avatar";
@@ -39,6 +39,8 @@ export default function FindPartnersPage() {
   const [error, setError] = useState<string | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [sentIds, setSentIds] = useState<string[]>([]);
+  const [inviteError, setInviteError] = useState("");
+  const inviteRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -68,18 +70,24 @@ export default function FindPartnersPage() {
   }, []);
 
   async function sendInvite(receiverId: string) {
+    if (inviteRef.current) return;
+    inviteRef.current = true;
     setPendingId(receiverId);
+    setInviteError("");
     try {
       const response = await fetch("/api/invitations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ receiverId }),
       });
-      if (response.ok) {
-        setSentIds((current) => [...current, receiverId]);
-      }
+      const data = (await response.json()) as { error?: string };
+      if (!response.ok) throw new Error(data.error ?? "Unable to send invite.");
+      setSentIds((current) => [...current, receiverId]);
+    } catch (sendError) {
+      setInviteError(sendError instanceof Error ? sendError.message : "Unable to send invite.");
     } finally {
       setPendingId(null);
+      inviteRef.current = false;
     }
   }
 
@@ -113,6 +121,8 @@ export default function FindPartnersPage() {
           </p>
         </div>
       ) : (
+        <>
+        {inviteError ? <p role="alert" className="mt-4 text-xs text-rose-400">{inviteError}</p> : null}
         <div className="mt-6 flex flex-col gap-3">
           {partners.map((partner) => {
             const name = partner.displayName.trim() || formatUsername(partner.username);
@@ -141,6 +151,7 @@ export default function FindPartnersPage() {
                   size="sm"
                   variant="outline"
                   disabled={pending || sent}
+                  loading={pending}
                   onClick={() => void sendInvite(partner._id)}
                 >
                   {sent ? "Invite sent" : pending ? "Sending…" : "Send Invite"}
@@ -149,6 +160,7 @@ export default function FindPartnersPage() {
             );
           })}
         </div>
+        </>
       )}
     </div>
   );

@@ -21,8 +21,11 @@ export function SprintMatchmaking() {
   useEffect(() => {
     if (!searching) return;
     let cancelled = false;
+    let requestInFlight = false;
 
     async function checkForMatch() {
+      if (requestInFlight) return;
+      requestInFlight = true;
       try {
         const response = await fetch("/api/sprint/match", { method: "POST" });
         const data = (await response.json()) as MatchResponse;
@@ -36,6 +39,8 @@ export function SprintMatchmaking() {
           setError(matchError instanceof Error ? matchError.message : "Matchmaking failed.");
           setSearching(false);
         }
+      } finally {
+        requestInFlight = false;
       }
     }
 
@@ -66,13 +71,14 @@ export function SprintMatchmaking() {
         <Button
           size="lg"
           disabled={searching}
+          loading={searching}
           onClick={() => {
             setError("");
             setSearching(true);
           }}
           className="mt-8 h-14 min-w-64 border-[#ccff00]/70 bg-[#ccff00] px-8 text-base font-semibold text-slate-950 hover:bg-[#d9ff43] hover:text-slate-950"
         >
-          {searching ? <Radio className="animate-pulse" /> : <Zap />}
+          {!searching ? <Zap /> : <Radio className="animate-pulse" />}
           {searching ? "Finding your builder…" : "Enter Matchmaking"}
         </Button>
         {searching ? (

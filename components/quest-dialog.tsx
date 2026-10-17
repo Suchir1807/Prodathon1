@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Check, Loader2, Sparkles } from "lucide-react";
+import { useRef, useState } from "react";
+import { Check, Sparkles } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -100,17 +100,24 @@ export function QuestDialog({
   onAccept: (quest: Quest) => void | Promise<void>;
 }) {
   const [booting, setBooting] = useState(false);
+  const [acceptError, setAcceptError] = useState("");
+  const acceptRef = useRef(false);
   const quest = session?.result?.quest ?? null;
   const mission = session?.result?.mission ?? null;
   const partner = session?.partner ?? null;
 
   async function handleAccept() {
-    if (!quest || booting || session?.accepted) return;
+    if (!quest || acceptRef.current || session?.accepted) return;
+    acceptRef.current = true;
     setBooting(true);
+    setAcceptError("");
     try {
       await onAccept(quest);
+    } catch (error) {
+      setAcceptError(error instanceof Error ? error.message : "Unable to accept quest.");
     } finally {
       setBooting(false);
+      acceptRef.current = false;
     }
   }
 
@@ -197,15 +204,17 @@ export function QuestDialog({
               </div>
             ) : null}
 
+            {acceptError ? <p role="alert" className="text-xs text-rose-400">{acceptError}</p> : null}
             <Button
               size="lg"
               className="w-full"
               disabled={session.accepted || booting}
+              loading={booting}
               onClick={() => {
                 void handleAccept();
               }}
             >
-              {booting ? <Loader2 className="animate-spin" /> : session.accepted ? <Check /> : null}
+              {!booting && session.accepted ? <Check /> : null}
               {booting
                 ? "Initializing Mission Control..."
                 : session.accepted

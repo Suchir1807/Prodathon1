@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Handshake, Loader2, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 
 import { UserAvatar } from "@/components/user-avatar";
 import { Button } from "@/components/ui/button";
@@ -12,6 +14,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatUsername } from "@/lib/profile";
+import { barterSchema, type BarterValues } from "@/lib/validation/schemas";
 
 type Trade = {
   id: string;
@@ -37,11 +40,19 @@ export function TradingFloor() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
-  const [skillOffered, setSkillOffered] = useState("");
-  const [skillNeeded, setSkillNeeded] = useState("");
-  const [description, setDescription] = useState("");
   const [pending, setPending] = useState<string | null>(null);
   const [formError, setFormError] = useState("");
+  const mutationRef = useRef(false);
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<BarterValues>({
+    resolver: zodResolver(barterSchema),
+    mode: "onBlur",
+    defaultValues: { skillOffered: "", skillNeeded: "", description: "" },
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -60,31 +71,33 @@ export function TradingFloor() {
     };
   }, []);
 
-  async function postTrade(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function postTrade(values: BarterValues) {
+    if (mutationRef.current) return;
+    mutationRef.current = true;
     setPending("new");
     setFormError("");
     try {
       const response = await fetch("/api/barters", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ skillOffered, skillNeeded, description }),
+        body: JSON.stringify(values),
       });
       const data = (await response.json()) as { barter?: Trade; error?: string };
       if (!response.ok || !data.barter) throw new Error(data.error ?? "Unable to post trade.");
       setTrades((current) => [data.barter!, ...current]);
-      setSkillOffered("");
-      setSkillNeeded("");
-      setDescription("");
+      reset();
       setModalOpen(false);
     } catch (error) {
       setFormError(error instanceof Error ? error.message : "Unable to post trade.");
     } finally {
       setPending(null);
+      mutationRef.current = false;
     }
   }
 
   async function acceptTrade(tradeId: string) {
+    if (mutationRef.current) return;
+    mutationRef.current = true;
     setPending(tradeId);
     setLoadError("");
     try {
@@ -95,7 +108,12 @@ export function TradingFloor() {
     } catch (error) {
       setLoadError(error instanceof Error ? error.message : "Unable to accept trade.");
       setPending(null);
+      mutationRef.current = false;
     }
+  }
+
+  function submitForm(event: React.FormEvent<HTMLFormElement>) {
+    void handleSubmit(postTrade)(event);
   }
 
   return (
@@ -145,9 +163,10 @@ export function TradingFloor() {
                     variant={isOwnTrade ? "outline" : "default"}
                     className={isOwnTrade ? "w-full" : "w-full"}
                     disabled={isOwnTrade || pending !== null}
+                    loading={pending === trade.id}
                     onClick={() => void acceptTrade(trade.id)}
                   >
-                    {pending === trade.id ? <Loader2 className="animate-spin" /> : isOwnTrade ? <Handshake /> : <ArrowRight />}
+                    {isOwnTrade ? <Handshake /> : <ArrowRight />}
                     {isOwnTrade ? "Your listing" : pending === trade.id ? "Connecting…" : "Accept trade"}
                   </Button>
                 </div>
@@ -169,32 +188,46 @@ export function TradingFloor() {
             <DialogTitle>Post a skill trade</DialogTitle>
             <DialogDescription>Offer something useful. Ask for exactly what your project needs next.</DialogDescription>
           </DialogHeader>
-          <form className="grid gap-4" onSubmit={(event) => void postTrade(event)}>
+          <form className="grid gap-4" onSubmit={submitForm} noValidate>
             <div className="grid gap-2">
               <Label htmlFor="trade-offer">Skill you offer</Label>
-              <Input id="trade-offer" value={skillOffered} onChange={(event) => setSkillOffered(event.target.value)} maxLength={80} required />
+              <Input
+                id="trade-offer"
+                aria-invalid={Boolean(errors.skillOffered)}
+                aria-describedby={errors.skillOffered ? "trade-offer-error" : undefined}
+                {...register("skillOffered")}
+                className={errors.skillOffered ? "border-rose-500/70 focus-visible:ring-rose-500/30" : ""}
+              />
+              {errors.skillOffered ? <p id="trade-offer-error" className="text-xs font-mono text-rose-500">{errors.skillOffered.message}</p> : null}
             </div>
             <div className="grid gap-2">
               <Label htmlFor="trade-need">Skill you need</Label>
-              <Input id="trade-need" value={skillNeeded} onChange={(event) => setSkillNeeded(event.target.value)} maxLength={80} required />
+              <Input
+                id="trade-need"
+                aria-invalid={Boolean(errors.skillNeeded)}
+                aria-describedby={errors.skillNeeded ? "trade-need-error" : undefined}
+                {...register("skillNeeded")}
+                className={errors.skillNeeded ? "border-rose-500/70 focus-visible:ring-rose-500/30" : ""}
+              />
+              {errors.skillNeeded ? <p id="trade-need-error" className="text-xs font-mono text-rose-500">{errors.skillNeeded.message}</p> : null}
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="trade-description">Details <span className="text-slate-500">({description.length}/300)</span></Label>
+              <Label htmlFor="trade-description">Details</Label>
               <textarea
                 id="trade-description"
-                value={description}
-                onChange={(event) => setDescription(event.target.value)}
-                maxLength={300}
                 rows={4}
-                required
-                className="resize-y rounded-lg border border-white/10 bg-transparent px-3 py-2 text-sm text-white outline-none placeholder:text-slate-500 focus-visible:ring-2 focus-visible:ring-[#ccff00]/40"
+                aria-invalid={Boolean(errors.description)}
+                aria-describedby={errors.description ? "trade-description-error" : undefined}
+                {...register("description")}
+                className={`resize-y rounded-lg border border-white/10 bg-transparent px-3 py-2 text-sm text-white outline-none placeholder:text-slate-500 focus-visible:ring-2 focus-visible:ring-[#ccff00]/40 ${errors.description ? "border-rose-500/70 focus-visible:ring-rose-500/30" : ""}`}
                 placeholder="Describe the specific exchange and time commitment."
               />
+              {errors.description ? <p id="trade-description-error" className="text-xs font-mono text-rose-500">{errors.description.message}</p> : null}
             </div>
             {formError ? <p role="alert" className="text-xs text-red-300">{formError}</p> : null}
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setModalOpen(false)}>Cancel</Button>
-              <Button type="submit" disabled={pending !== null}>{pending === "new" ? "Posting…" : "Post trade"}</Button>
+              <Button type="submit" loading={pending === "new" || isSubmitting}>{pending === "new" || isSubmitting ? "Posting…" : "Post trade"}</Button>
             </div>
           </form>
         </DialogContent>

@@ -1,14 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { AlertTriangle, Loader2, Radio, Siren } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { beaconSchema, type BeaconValues } from "@/lib/validation/schemas";
 
 type BeaconItem = {
   id: string;
@@ -22,12 +25,20 @@ type BeaconItem = {
 export function BeaconCenter() {
   const [beacons, setBeacons] = useState<BeaconItem[]>([]);
   const [open, setOpen] = useState(false);
-  const [eventLocation, setEventLocation] = useState("");
-  const [missingSkill, setMissingSkill] = useState("");
-  const [urgency, setUrgency] = useState<BeaconItem["urgency"]>("High");
   const [pending, setPending] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const submissionRef = useRef(false);
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<BeaconValues>({
+    resolver: zodResolver(beaconSchema),
+    mode: "onBlur",
+    defaultValues: { eventLocation: "", missingSkill: "", urgency: "High" },
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -52,28 +63,32 @@ export function BeaconCenter() {
     };
   }, []);
 
-  async function activate(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function activate(values: BeaconValues) {
+    if (submissionRef.current) return;
+    submissionRef.current = true;
     setPending(true);
     setError("");
     try {
       const response = await fetch("/api/beacons", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ eventLocation, missingSkill, urgency }),
+        body: JSON.stringify(values),
       });
       const data = (await response.json()) as { beacon?: BeaconItem; error?: string };
       if (!response.ok || !data.beacon) throw new Error(data.error ?? "Unable to activate beacon.");
       setBeacons((current) => [data.beacon!, ...current]);
-      setEventLocation("");
-      setMissingSkill("");
-      setUrgency("High");
+      reset();
       setOpen(false);
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : "Unable to activate beacon.");
     } finally {
       setPending(false);
+      submissionRef.current = false;
     }
+  }
+
+  function submitForm(event: React.FormEvent<HTMLFormElement>) {
+    void handleSubmit(activate)(event);
   }
 
   return (
@@ -147,46 +162,50 @@ export function BeaconCenter() {
               Broadcast a local request for help. The beacon expires automatically after 12 hours.
             </DialogDescription>
           </DialogHeader>
-          <form className="grid gap-4" onSubmit={(event) => void activate(event)}>
+          <form className="grid gap-4" onSubmit={submitForm} noValidate>
             <div className="grid gap-2">
               <Label htmlFor="beacon-event">Event name / location</Label>
               <Input
                 id="beacon-event"
-                value={eventLocation}
-                onChange={(event) => setEventLocation(event.target.value)}
                 placeholder="Demo day at Foundry Hall"
-                maxLength={120}
-                required
+                aria-invalid={Boolean(errors.eventLocation)}
+                aria-describedby={errors.eventLocation ? "beacon-event-error" : undefined}
+                {...register("eventLocation")}
+                className={errors.eventLocation ? "border-rose-500/70 focus-visible:ring-rose-500/30" : ""}
               />
+              {errors.eventLocation ? <p id="beacon-event-error" className="text-xs font-mono text-rose-500">{errors.eventLocation.message}</p> : null}
             </div>
             <div className="grid gap-2">
               <Label htmlFor="beacon-skill">Required skill</Label>
               <Input
                 id="beacon-skill"
-                value={missingSkill}
-                onChange={(event) => setMissingSkill(event.target.value)}
                 placeholder="Live audio engineering"
-                maxLength={100}
-                required
+                aria-invalid={Boolean(errors.missingSkill)}
+                aria-describedby={errors.missingSkill ? "beacon-skill-error" : undefined}
+                {...register("missingSkill")}
+                className={errors.missingSkill ? "border-rose-500/70 focus-visible:ring-rose-500/30" : ""}
               />
+              {errors.missingSkill ? <p id="beacon-skill-error" className="text-xs font-mono text-rose-500">{errors.missingSkill.message}</p> : null}
             </div>
             <div className="grid gap-2">
               <Label htmlFor="beacon-urgency">Urgency</Label>
               <select
                 id="beacon-urgency"
-                value={urgency}
-                onChange={(event) => setUrgency(event.target.value as BeaconItem["urgency"])}
+                aria-invalid={Boolean(errors.urgency)}
+                aria-describedby={errors.urgency ? "beacon-urgency-error" : undefined}
+                {...register("urgency")}
                 className="h-9 rounded-lg border border-white/10 bg-[#0a0f1c] px-3 text-sm text-white outline-none focus-visible:ring-2 focus-visible:ring-red-400/50"
               >
                 <option value="High">High</option>
                 <option value="Critical">Critical</option>
               </select>
+              {errors.urgency ? <p id="beacon-urgency-error" className="text-xs font-mono text-rose-500">{errors.urgency.message}</p> : null}
             </div>
             {error ? <p role="alert" className="text-xs text-red-300">{error}</p> : null}
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-              <Button type="submit" disabled={pending} className="border-red-300/40 bg-red-600 text-white hover:bg-red-500">
-                {pending ? "Activating…" : "Broadcast beacon"}
+              <Button type="submit" loading={pending || isSubmitting} className="border-red-300/40 bg-red-600 text-white hover:bg-red-500">
+                {pending || isSubmitting ? "Activating…" : "Broadcast beacon"}
               </Button>
             </div>
           </form>

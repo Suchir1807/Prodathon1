@@ -2,37 +2,27 @@ import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
 
 import connectDB from "@/lib/mongodb";
+import { signupRequestSchema } from "@/lib/validation/schemas";
 import User from "@/models/User";
-
-const USERNAME_PATTERN = /^[a-z0-9_]{3,32}$/;
 
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as {
-      username?: string;
-      password?: string;
-    };
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
+    }
 
-    const username = body.username?.trim().toLowerCase() ?? "";
-    const password = body.password ?? "";
-
-    if (!USERNAME_PATTERN.test(username)) {
+    const result = signupRequestSchema.safeParse(body);
+    if (!result.success) {
       return NextResponse.json(
-        {
-          error:
-            "Username must be 3–32 characters and use only letters, numbers, or underscores.",
-        },
+        { error: result.error.issues[0]?.message ?? "Invalid signup details." },
         { status: 400 },
       );
     }
 
-    if (password.length < 8) {
-      return NextResponse.json(
-        { error: "Password must be at least 8 characters." },
-        { status: 400 },
-      );
-    }
-
+    const { username, password } = result.data;
     await connectDB();
 
     const existing = await User.findOne({ username });

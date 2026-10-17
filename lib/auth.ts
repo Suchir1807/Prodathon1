@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 
 import connectDB from "@/lib/mongodb";
 import User from "@/models/User";
+import { loginSchema } from "@/lib/validation/schemas";
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -14,12 +15,12 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        const username = credentials?.username?.trim().toLowerCase();
-        const password = credentials?.password;
-
-        if (!username || !password) {
-          return null;
-        }
+        const parsed = loginSchema.safeParse({
+          username: credentials?.username,
+          password: credentials?.password,
+        });
+        if (!parsed.success) return null;
+        const { username, password } = parsed.data;
 
         await connectDB();
         const user = await User.findOne({ username }).select(

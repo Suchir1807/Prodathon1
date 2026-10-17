@@ -2,11 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, Check, Clock3, Loader2, Plus, Save } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { workspaceTaskSchema, type WorkspaceTaskValues } from "@/lib/validation/schemas";
 import type { WorkspaceTaskStatus, WorkspaceType } from "@/models/Workspace";
 
 type WorkspaceTask = {
@@ -38,11 +41,21 @@ export function ProductivityWorkspace({ workspace }: { workspace: WorkspaceData 
   const dirtyRef = useRef(false);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("saved");
   const [tasks, setTasks] = useState(workspace.tasks);
-  const [taskTitle, setTaskTitle] = useState("");
   const [pendingTask, setPendingTask] = useState<string | null>(null);
   const [boardError, setBoardError] = useState("");
   const [scratchpadError, setScratchpadError] = useState("");
   const [now, setNow] = useState<number | null>(null);
+  const taskMutationRef = useRef(false);
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors: taskErrors, isSubmitting: addingTask },
+  } = useForm<WorkspaceTaskValues>({
+    resolver: zodResolver(workspaceTaskSchema),
+    mode: "onBlur",
+    defaultValues: { title: "" },
+  });
 
   useEffect(() => {
     if (!workspace.expiresAt) return;
@@ -135,31 +148,32 @@ export function ProductivityWorkspace({ workspace }: { workspace: WorkspaceData 
     setSaveStatus("editing");
   }
 
-  async function addTask(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const title = taskTitle.trim();
-    if (!title || pendingTask) return;
+  async function addTask(values: WorkspaceTaskValues) {
+    if (taskMutationRef.current || pendingTask) return;
+    taskMutationRef.current = true;
     setPendingTask("new");
     setBoardError("");
     try {
       const response = await fetch(`/api/workspaces/${workspace.id}/tasks`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title }),
+        body: JSON.stringify(values),
       });
       const data = (await response.json()) as { tasks?: WorkspaceTask[]; error?: string };
       if (!response.ok) throw new Error(data.error ?? "Unable to add task.");
       setTasks(data.tasks ?? []);
-      setTaskTitle("");
+      reset();
     } catch (error) {
       setBoardError(error instanceof Error ? error.message : "Unable to add task.");
     } finally {
       setPendingTask(null);
+      taskMutationRef.current = false;
     }
   }
 
   async function moveTask(taskId: string, direction: "left" | "right") {
-    if (pendingTask) return;
+    if (taskMutationRef.current || pendingTask) return;
+    taskMutationRef.current = true;
     setPendingTask(taskId);
     setBoardError("");
     try {
@@ -175,7 +189,12 @@ export function ProductivityWorkspace({ workspace }: { workspace: WorkspaceData 
       setBoardError(error instanceof Error ? error.message : "Unable to move task.");
     } finally {
       setPendingTask(null);
+      taskMutationRef.current = false;
     }
+  }
+
+  function submitTaskForm(event: React.FormEvent<HTMLFormElement>) {
+    void handleSubmit(addTask)(event);
   }
 
   const secondsLeft = workspace.expiresAt && now !== null
@@ -241,22 +260,23 @@ export function ProductivityWorkspace({ workspace }: { workspace: WorkspaceData 
               <h2 className="text-sm font-semibold text-white">Task board</h2>
               <p className="mt-1 text-xs text-slate-500">Move work from next up to shipped.</p>
             </div>
-            <form className="flex w-full gap-2 sm:w-auto" onSubmit={(event) => void addTask(event)}>
+            <form className="flex w-full gap-2 sm:w-auto" onSubmit={submitTaskForm} noValidate>
               <Label htmlFor="new-workspace-task" className="sr-only">New task title</Label>
               <Input
                 id="new-workspace-task"
-                value={taskTitle}
-                onChange={(event) => setTaskTitle(event.target.value)}
                 placeholder="Add a task"
-                maxLength={160}
+                aria-invalid={Boolean(taskErrors.title)}
+                aria-describedby={taskErrors.title ? "workspace-task-error" : undefined}
+                {...register("title")}
                 className="sm:w-52"
-                disabled={expired}
+                disabled={expired || pendingTask !== null}
               />
-              <Button type="submit" size="icon" aria-label="Add task" disabled={expired || !taskTitle.trim() || pendingTask !== null}>
-                {pendingTask === "new" ? <Loader2 className="animate-spin" /> : <Plus />}
+              <Button type="submit" size="icon" aria-label="Add task" loading={pendingTask === "new" || addingTask} disabled={expired || pendingTask !== null}>
+                <Plus />
               </Button>
             </form>
           </div>
+          {taskErrors.title ? <p id="workspace-task-error" className="mb-3 text-xs font-mono text-rose-500">{taskErrors.title.message}</p> : null}
           {boardError ? <p role="alert" className="mb-3 text-xs text-red-300">{boardError}</p> : null}
           <div className="flex gap-3 overflow-x-auto pb-3">
             {COLUMNS.map((column) => {

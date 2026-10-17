@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
@@ -8,32 +10,40 @@ import { AuthCard, AuthLink } from "@/components/auth-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PasswordInput } from "@/components/password-input";
+import { loginSchema, type LoginValues } from "@/lib/validation/schemas";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const submissionRef = useRef(false);
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<LoginValues>({
+    resolver: zodResolver(loginSchema),
+    mode: "onBlur",
+    defaultValues: { username: "", password: "" },
+  });
 
-  async function handleSubmit(event: React.FormEvent) {
-    event.preventDefault();
+  async function submit(values: LoginValues) {
+    if (submissionRef.current) return;
+    submissionRef.current = true;
     setError(null);
-    setLoading(true);
-
-    const result = await signIn("credentials", {
-      username: username.trim(),
-      password,
-      redirect: false,
-    });
-
-    if (!result?.ok) {
-      setLoading(false);
-      setError("Invalid username or password.");
-      return;
-    }
 
     try {
+      const result = await signIn("credentials", {
+        username: values.username,
+        password: values.password,
+        redirect: false,
+      });
+
+      if (!result?.ok) {
+        setError("Invalid username or password.");
+        return;
+      }
+
       const response = await fetch("/api/profile", { cache: "no-store" });
       const data = (await response.json()) as { isProfileComplete?: boolean };
 
@@ -44,11 +54,14 @@ export default function LoginPage() {
       }
       router.refresh();
     } catch {
-      router.push("/onboarding");
-      router.refresh();
+      setError("Unable to sign in. Check your connection and try again.");
     } finally {
-      setLoading(false);
+      submissionRef.current = false;
     }
+  }
+
+  function submitForm(event: React.FormEvent<HTMLFormElement>) {
+    void handleSubmit(submit)(event);
   }
 
   return (
@@ -61,43 +74,42 @@ export default function LoginPage() {
         </>
       }
     >
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={submitForm} className="space-y-4" noValidate>
         <div className="space-y-2">
           <Label htmlFor="username" className="text-slate-300">
             Username
           </Label>
           <Input
             id="username"
-            name="username"
             autoComplete="username"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            className="h-10 border-white/10 bg-black/30"
-            required
+            aria-invalid={Boolean(errors.username)}
+            aria-describedby={errors.username ? "login-username-error" : undefined}
+            {...register("username")}
+            className={`h-10 border-white/10 bg-black/30 ${errors.username ? "border-rose-500/70 focus-visible:ring-rose-500/30" : ""}`}
           />
+          {errors.username ? <p id="login-username-error" className="text-xs font-mono text-rose-500">{errors.username.message}</p> : null}
         </div>
         <div className="space-y-2">
           <Label htmlFor="password" className="text-slate-300">
             Password
           </Label>
-          <Input
+          <PasswordInput
             id="password"
-            name="password"
-            type="password"
             autoComplete="current-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            invalid={Boolean(errors.password)}
+            aria-describedby={errors.password ? "login-password-error" : undefined}
+            {...register("password")}
             className="h-10 border-white/10 bg-black/30"
-            required
           />
+          {errors.password ? <p id="login-password-error" className="text-xs font-mono text-rose-500">{errors.password.message}</p> : null}
         </div>
         {error ? (
           <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
             {error}
           </p>
         ) : null}
-        <Button type="submit" className="h-10 w-full" disabled={loading}>
-          {loading ? "Signing in…" : "Sign in"}
+        <Button type="submit" className="h-10 w-full" loading={isSubmitting}>
+          {isSubmitting ? "Signing in…" : "Sign in"}
         </Button>
       </form>
     </AuthCard>

@@ -8,9 +8,9 @@ import { Loader2 } from "lucide-react";
 import { ProfileSkillGraphForm } from "@/components/profile-skill-graph-form";
 import { useIsClient, useProfile } from "@/components/profile-provider";
 import { EMPTY_PROFILE } from "@/lib/catalog";
-import { buildProfileSavePayload } from "@/lib/profile-payload";
 import { profileFromUser } from "@/lib/user-profile";
 import type { Profile } from "@/lib/types";
+import type { ProfileValues } from "@/lib/validation/schemas";
 
 type ApiProfile = {
   displayName: string;
@@ -93,8 +93,7 @@ export function OnboardingForm() {
     setDraft((current) => ({ ...current, ...partial }));
   }, []);
 
-  async function handleSubmit(event: React.FormEvent) {
-    event.preventDefault();
+  async function handleSubmit(values: ProfileValues) {
     setSaving(true);
     setToast(null);
 
@@ -102,7 +101,7 @@ export function OnboardingForm() {
       const response = await fetch("/api/profile", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(buildProfileSavePayload(draft)),
+        body: JSON.stringify(values),
       });
 
       const data = (await response.json()) as ApiProfile & {

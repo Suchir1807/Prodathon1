@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import connectDB from "@/lib/mongodb";
 import { requireCurrentUser } from "@/lib/session-user";
+import { barterSchema } from "@/lib/validation/schemas";
 import Barter from "@/models/Barter";
 
 export async function GET() {
@@ -45,22 +46,21 @@ export async function POST(request: Request) {
   const current = await requireCurrentUser();
   if (!current) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  let body: { skillOffered?: unknown; skillNeeded?: unknown; description?: unknown };
+  let body: unknown;
   try {
-    body = (await request.json()) as typeof body;
+    body = await request.json();
   } catch {
     return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
   }
 
-  const skillOffered = typeof body.skillOffered === "string" ? body.skillOffered.trim() : "";
-  const skillNeeded = typeof body.skillNeeded === "string" ? body.skillNeeded.trim() : "";
-  const description = typeof body.description === "string" ? body.description.trim() : "";
-  if (!skillOffered || !skillNeeded || !description || description.length > 300) {
+  const result = barterSchema.safeParse(body);
+  if (!result.success) {
     return NextResponse.json(
-      { error: "Offer, need, and a description of up to 300 characters are required." },
+      { error: result.error.issues[0]?.message ?? "Invalid trade details." },
       { status: 400 },
     );
   }
+  const { skillOffered, skillNeeded, description } = result.data;
 
   try {
     await connectDB();

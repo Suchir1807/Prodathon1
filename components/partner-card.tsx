@@ -42,6 +42,8 @@ export function PartnerCard({
   onSendInvite,
   invitePending,
   inviteSent,
+  proposePending = false,
+  proposeDisabled = false,
 }: {
   partner: Partner;
   insight: MatchInsight;
@@ -49,6 +51,8 @@ export function PartnerCard({
   onSendInvite?: () => void;
   invitePending?: boolean;
   inviteSent?: boolean;
+  proposePending?: boolean;
+  proposeDisabled?: boolean;
 }) {
   return (
     <article className="glass glow-card grid gap-3 rounded-xl p-4 md:grid-cols-[200px_1fr] md:grid-rows-[auto_auto]">
@@ -72,13 +76,14 @@ export function PartnerCard({
             size="sm"
             variant="outline"
             disabled={invitePending || inviteSent}
+            loading={invitePending}
             onClick={onSendInvite}
           >
             {inviteSent ? "Invite sent" : invitePending ? "Sending…" : "Send Invite"}
           </Button>
         ) : null}
-        <Button size="sm" onClick={onPropose}>
-          Propose Match
+        <Button size="sm" onClick={onPropose} loading={proposePending} disabled={proposeDisabled}>
+          {proposePending ? "Generating…" : "Propose Match"}
         </Button>
       </div>
     </article>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Inbox, Loader2 } from "lucide-react";
 
@@ -30,6 +30,9 @@ export function InvitationsInbox() {
   const [loading, setLoading] = useState(false);
   const [invites, setInvites] = useState<PendingInvite[]>([]);
   const [actingId, setActingId] = useState<string | null>(null);
+  const [actingStatus, setActingStatus] = useState<"accepted" | "declined" | null>(null);
+  const [actionError, setActionError] = useState("");
+  const actionRef = useRef(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -45,15 +48,23 @@ export function InvitationsInbox() {
   }, []);
 
   useEffect(() => {
+    // The effect intentionally starts an async fetch that owns its loading state.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void load();
   }, [load]);
 
   useEffect(() => {
+    // The effect intentionally refreshes when the inbox opens.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (open) void load();
   }, [open, load]);
 
   async function respond(invitationId: string, status: "accepted" | "declined") {
+    if (actionRef.current) return;
+    actionRef.current = true;
     setActingId(invitationId);
+    setActingStatus(status);
+    setActionError("");
     try {
       const response = await fetch("/api/invitations", {
         method: "PUT",
@@ -66,7 +77,7 @@ export function InvitationsInbox() {
         error?: string;
       };
 
-      if (!response.ok) return;
+      if (!response.ok) throw new Error(data.error ?? "Unable to update invitation.");
 
       if (status === "accepted") {
         setOpen(false);
@@ -75,8 +86,12 @@ export function InvitationsInbox() {
       }
 
       await load();
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Unable to update invitation.");
     } finally {
       setActingId(null);
+      setActingStatus(null);
+      actionRef.current = false;
     }
   }
 
@@ -111,6 +126,7 @@ export function InvitationsInbox() {
             <p className="px-1 text-xs font-medium tracking-wide text-slate-400 uppercase">
               Invitations
             </p>
+            {actionError ? <p role="alert" className="mt-2 px-1 text-xs text-rose-400">{actionError}</p> : null}
             {loading ? (
               <div className="flex items-center gap-2 px-1 py-6 text-sm text-slate-400">
                 <Loader2 className="size-4 animate-spin" />
@@ -147,6 +163,7 @@ export function InvitationsInbox() {
                           size="sm"
                           className="h-7 flex-1"
                           disabled={busy}
+                          loading={busy && actingStatus === "accepted"}
                           onClick={() => void respond(invite.id, "accepted")}
                         >
                           Accept
@@ -157,6 +174,7 @@ export function InvitationsInbox() {
                           variant="outline"
                           className={cn("h-7 flex-1", busy && "opacity-50")}
                           disabled={busy}
+                          loading={busy && actingStatus === "declined"}
                           onClick={() => void respond(invite.id, "declined")}
                         >
                           Decline

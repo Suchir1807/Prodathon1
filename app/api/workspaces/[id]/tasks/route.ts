@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 
 import { findAuthorizedWorkspace } from "@/lib/authorized-workspace";
+import { workspaceTaskSchema } from "@/lib/validation/schemas";
 import type { WorkspaceTaskStatus } from "@/models/Workspace";
 
 type RouteContext = { params: Promise<{ id: string }> };
@@ -27,16 +28,20 @@ export async function POST(request: Request, { params }: RouteContext) {
     return NextResponse.json({ error: access.error }, { status: access.status });
   }
 
-  let body: { title?: unknown };
+  let body: unknown;
   try {
-    body = (await request.json()) as typeof body;
+    body = await request.json();
   } catch {
     return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
   }
-  const title = typeof body.title === "string" ? body.title.trim() : "";
-  if (!title || title.length > 160) {
-    return NextResponse.json({ error: "Task title must be between 1 and 160 characters." }, { status: 400 });
+  const result = workspaceTaskSchema.safeParse(body);
+  if (!result.success) {
+    return NextResponse.json(
+      { error: result.error.issues[0]?.message ?? "Invalid task title." },
+      { status: 400 },
+    );
   }
+  const { title } = result.data;
 
   access.workspace.tasks.push({ id: randomUUID(), title, status: "todo" });
   await access.workspace.save();

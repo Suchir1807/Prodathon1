@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { Check, Loader2 } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 
 import { ProfileLogoutButton } from "@/components/profile-logout-button";
 import { ToggleChip } from "@/components/toggle-chip";
@@ -17,6 +19,7 @@ import {
   SKILLS_I_WANT,
 } from "@/lib/catalog";
 import { formatUsername } from "@/lib/profile";
+import { profileSchema, type ProfileValues } from "@/lib/validation/schemas";
 import { cn } from "@/lib/utils";
 
 function toggleValue(list: string[], value: string) {
@@ -34,12 +37,14 @@ function SkillChips({
   options,
   selected,
   onToggle,
+  error,
 }: {
   title: string;
   description: string;
   options: readonly string[];
   selected: string[];
   onToggle: (skill: string) => void;
+  error?: string;
 }) {
   return (
     <section className="glass rounded-xl p-5">
@@ -57,6 +62,7 @@ function SkillChips({
           </ToggleChip>
         ))}
       </div>
+      {error ? <p role="alert" className="mt-2 text-xs font-mono text-rose-500">{error}</p> : null}
     </section>
   );
 }
@@ -97,6 +103,23 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const submissionRef = useRef(false);
+  const {
+    handleSubmit,
+    reset,
+    setValue,
+    trigger,
+    formState: { errors, isSubmitting },
+  } = useForm<ProfileValues>({
+    resolver: zodResolver(profileSchema),
+    mode: "onBlur",
+    defaultValues: {
+      displayName: "",
+      skillsHave: [],
+      skillsLearn: [],
+      domainInterests: [],
+    },
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -127,6 +150,12 @@ export default function ProfilePage() {
           setSkillsHave(nextHave);
           setSkillsLearn(nextLearn);
           setDomainInterests(nextDomains);
+          reset({
+            displayName: nextName,
+            skillsHave: nextHave,
+            skillsLearn: nextLearn,
+            domainInterests: nextDomains,
+          });
           saveProfile({
             name: nextName,
             canTeach: nextHave,
@@ -149,8 +178,7 @@ export default function ProfilePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function handleSave(event: React.FormEvent) {
-    event.preventDefault();
+  async function handleSave(values: ProfileValues) {
     setSaving(true);
     setSaved(false);
     setToast(null);
@@ -159,12 +187,7 @@ export default function ProfilePage() {
       const response = await fetch("/api/profile", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          displayName,
-          skillsHave,
-          skillsLearn,
-          domainInterests,
-        }),
+        body: JSON.stringify(values),
       });
 
       const data = (await response.json()) as {
@@ -206,6 +229,14 @@ export default function ProfilePage() {
     }
   }
 
+  function submitForm(event: React.FormEvent<HTMLFormElement>) {
+    if (submissionRef.current) return;
+    submissionRef.current = true;
+    void handleSubmit(handleSave)(event).finally(() => {
+      submissionRef.current = false;
+    });
+  }
+
   const cardName = displayName.trim() || (username ? formatUsername(username) : "You");
 
   if (loading) {
@@ -229,7 +260,8 @@ export default function ProfilePage() {
     <>
       <form
         className="mx-auto grid max-w-6xl grid-cols-1 gap-8 px-4 py-6 md:px-6 lg:grid-cols-3"
-        onSubmit={handleSave}
+        onSubmit={submitForm}
+        noValidate
       >
         {toast ? (
           <p
@@ -273,11 +305,17 @@ export default function ProfilePage() {
                   id="display-name"
                   value={displayName}
                   placeholder={username ? formatUsername(username) : "Display name"}
+                  aria-invalid={Boolean(errors.displayName)}
+                  aria-describedby={errors.displayName ? "edit-display-name-error" : undefined}
+                  onBlur={() => void trigger("displayName")}
                   onChange={(event) => {
                     setSaved(false);
                     setDisplayName(event.target.value);
+                    setValue("displayName", event.target.value, { shouldDirty: true });
                   }}
+                  className={errors.displayName ? "border-rose-500/70 focus-visible:ring-rose-500/30" : ""}
                 />
+                {errors.displayName ? <p id="edit-display-name-error" className="text-xs font-mono text-rose-500">{errors.displayName.message}</p> : null}
               </div>
             </div>
           </section>
@@ -289,8 +327,11 @@ export default function ProfilePage() {
             selected={skillsHave}
             onToggle={(skillName) => {
               setSaved(false);
-              setSkillsHave((current) => toggleValue(current, skillName));
+              const next = toggleValue(skillsHave, skillName);
+              setSkillsHave(next);
+              setValue("skillsHave", next, { shouldDirty: true, shouldValidate: true });
             }}
+            error={errors.skillsHave?.message}
           />
           <SkillChips
             title="Skills I Want to Learn"
@@ -299,8 +340,11 @@ export default function ProfilePage() {
             selected={skillsLearn}
             onToggle={(skillName) => {
               setSaved(false);
-              setSkillsLearn((current) => toggleValue(current, skillName));
+              const next = toggleValue(skillsLearn, skillName);
+              setSkillsLearn(next);
+              setValue("skillsLearn", next, { shouldDirty: true, shouldValidate: true });
             }}
+            error={errors.skillsLearn?.message}
           />
           <SkillChips
             title="Domain Interests"
@@ -309,8 +353,11 @@ export default function ProfilePage() {
             selected={domainInterests}
             onToggle={(skillName) => {
               setSaved(false);
-              setDomainInterests((current) => toggleValue(current, skillName));
+              const next = toggleValue(domainInterests, skillName);
+              setDomainInterests(next);
+              setValue("domainInterests", next, { shouldDirty: true, shouldValidate: true });
             }}
+            error={errors.domainInterests?.message}
           />
         </div>
 
@@ -339,10 +386,9 @@ export default function ProfilePage() {
             </div>
             <Button
               type="submit"
-              disabled={saving}
+              loading={saving || isSubmitting}
               className="mt-6 h-12 w-full border-transparent bg-[#ccff00] text-base font-semibold text-[#0a0f1c] hover:border-transparent hover:bg-[#d6ff4a] hover:text-[#0a0f1c] hover:shadow-[0_0_18px_rgba(204,255,0,0.55)]"
             >
-              {saving ? <Loader2 className="animate-spin" /> : null}
               {!saving && saved ? <Check /> : null}
               {saving ? "Saving..." : "Save Changes"}
             </Button>

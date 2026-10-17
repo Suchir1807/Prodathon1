@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 import { authOptions } from "@/lib/auth";
 import connectDB from "@/lib/mongodb";
+import { profileSchema } from "@/lib/validation/schemas";
 import User from "@/models/User";
 
 function asStringList(value: unknown): string[] {
@@ -60,18 +61,20 @@ export async function PUT(request: Request) {
   }
 
   try {
-    const body = (await request.json()) as {
-      displayName?: string;
-      skillsHave?: unknown;
-      skillsLearn?: unknown;
-      domainInterests?: unknown;
-    };
-
-    const displayName =
-      typeof body.displayName === "string" ? body.displayName.trim().slice(0, 60) : "";
-    const skillsHave = asStringList(body.skillsHave);
-    const skillsLearn = asStringList(body.skillsLearn);
-    const domainInterests = asStringList(body.domainInterests);
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
+    }
+    const result = profileSchema.safeParse(body);
+    if (!result.success) {
+      return NextResponse.json(
+        { error: result.error.issues[0]?.message ?? "Invalid profile details." },
+        { status: 400 },
+      );
+    }
+    const { displayName, skillsHave, skillsLearn, domainInterests } = result.data;
 
     await connectDB();
     const user = await User.findOneAndUpdate(

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import connectDB from "@/lib/mongodb";
 import { requireCurrentUser } from "@/lib/session-user";
+import { beaconSchema } from "@/lib/validation/schemas";
 import Beacon from "@/models/Beacon";
 
 const BEACON_TTL_MS = 12 * 60 * 60 * 1000;
@@ -51,19 +52,21 @@ export async function POST(request: Request) {
   const current = await requireCurrentUser();
   if (!current) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  let body: { eventLocation?: unknown; missingSkill?: unknown; urgency?: unknown };
+  let body: unknown;
   try {
-    body = (await request.json()) as typeof body;
+    body = await request.json();
   } catch {
     return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
   }
 
-  const eventLocation = typeof body.eventLocation === "string" ? body.eventLocation.trim() : "";
-  const missingSkill = typeof body.missingSkill === "string" ? body.missingSkill.trim() : "";
-  const urgency = body.urgency === "Critical" ? "Critical" : "High";
-  if (!eventLocation || !missingSkill) {
-    return NextResponse.json({ error: "Event name and required skill are required." }, { status: 400 });
+  const result = beaconSchema.safeParse(body);
+  if (!result.success) {
+    return NextResponse.json(
+      { error: result.error.issues[0]?.message ?? "Invalid beacon details." },
+      { status: 400 },
+    );
   }
+  const { eventLocation, missingSkill, urgency } = result.data;
 
   try {
     await connectDB();

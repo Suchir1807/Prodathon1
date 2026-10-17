@@ -1,6 +1,9 @@
 "use client";
 
 import { Sparkles } from "lucide-react";
+import { useRef } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 
 import { LiveIdCard } from "@/components/live-id-card";
 import { ToggleChip, toggleInList } from "@/components/toggle-chip";
@@ -17,6 +20,7 @@ import {
 import { displayName, formatUsername } from "@/lib/profile";
 import { liveStateFromDraft } from "@/lib/profile-payload";
 import type { Profile } from "@/lib/types";
+import { profileSchema, type ProfileValues } from "@/lib/validation/schemas";
 import { cn } from "@/lib/utils";
 
 function SkillSection({
@@ -71,16 +75,40 @@ export function ProfileSkillGraphForm({
   saved: boolean;
   toast: string | null;
   submitLabel: string;
-  onSubmit: (event: React.FormEvent) => void;
+  onSubmit: (values: ProfileValues) => Promise<void>;
 }) {
   const live = liveStateFromDraft(draft);
   const previewName = displayName(draft, username);
   const isOnboarding = mode === "onboarding";
+  const submissionRef = useRef(false);
+  const {
+    register,
+    setValue,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<ProfileValues>({
+    resolver: zodResolver(profileSchema),
+    mode: "onBlur",
+    defaultValues: live,
+  });
+
+  function setSkills(field: "skillsHave" | "skillsLearn" | "domainInterests", values: string[]) {
+    setValue(field, values, { shouldDirty: true, shouldValidate: true });
+  }
+
+  function submitForm(event: React.FormEvent<HTMLFormElement>) {
+    if (submissionRef.current) return;
+    submissionRef.current = true;
+    void handleSubmit(onSubmit)(event).finally(() => {
+      submissionRef.current = false;
+    });
+  }
 
   return (
     <form
       className="mx-auto grid max-w-6xl grid-cols-1 gap-8 px-4 py-6 md:px-6 lg:grid-cols-3"
-      onSubmit={onSubmit}
+      onSubmit={submitForm}
+      noValidate
     >
       {toast ? (
         <p
@@ -128,21 +156,36 @@ export function ProfileSkillGraphForm({
               <Label htmlFor="display-name">Display name</Label>
               <Input
                 id="display-name"
-                value={live.displayName}
                 placeholder={formatUsername(username)}
-                onChange={(event) => onDraftChange({ name: event.target.value })}
+                aria-invalid={Boolean(errors.displayName)}
+                aria-describedby={errors.displayName ? "profile-display-name-error" : undefined}
+                {...register("displayName", {
+                  onChange: (event) => onDraftChange({ name: event.target.value }),
+                })}
+                className={errors.displayName ? "border-rose-500/70 focus-visible:ring-rose-500/30" : ""}
               />
+              {errors.displayName ? (
+                <p id="profile-display-name-error" className="text-xs font-mono text-rose-500">
+                  {errors.displayName.message}
+                </p>
+              ) : null}
               {isOnboarding ? (
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() =>
-                    onDraftChange({
-                      name: STARTER_PROFILE.name,
-                      canTeach: [...STARTER_PROFILE.canTeach],
-                      wantsToLearn: [...STARTER_PROFILE.wantsToLearn],
-                      domains: [...STARTER_PROFILE.domains],
-                    })
+                    (() => {
+                      onDraftChange({
+                        name: STARTER_PROFILE.name,
+                        canTeach: [...STARTER_PROFILE.canTeach],
+                        wantsToLearn: [...STARTER_PROFILE.wantsToLearn],
+                        domains: [...STARTER_PROFILE.domains],
+                      });
+                      setValue("displayName", STARTER_PROFILE.name, { shouldDirty: true });
+                      setSkills("skillsHave", [...STARTER_PROFILE.canTeach]);
+                      setSkills("skillsLearn", [...STARTER_PROFILE.wantsToLearn]);
+                      setSkills("domainInterests", [...STARTER_PROFILE.domains]);
+                    })()
                   }
                 >
                   <Sparkles />
@@ -158,27 +201,33 @@ export function ProfileSkillGraphForm({
           description="What you can teach a partner this week."
           options={SKILLS_I_HAVE}
           selected={live.skillsHave}
-          onToggle={(value) =>
-            onDraftChange({ canTeach: toggleInList(live.skillsHave, value) })
-          }
+          onToggle={(value) => {
+            const next = toggleInList(live.skillsHave, value);
+            onDraftChange({ canTeach: next });
+            setSkills("skillsHave", next);
+          }}
         />
         <SkillSection
           title="Skills I Want to Learn"
           description="What you want the quest to make you practice."
           options={SKILLS_I_WANT}
           selected={live.skillsLearn}
-          onToggle={(value) =>
-            onDraftChange({ wantsToLearn: toggleInList(live.skillsLearn, value) })
-          }
+          onToggle={(value) => {
+            const next = toggleInList(live.skillsLearn, value);
+            onDraftChange({ wantsToLearn: next });
+            setSkills("skillsLearn", next);
+          }}
         />
         <SkillSection
           title="Domain Interests"
           description="The kinds of products you actually want to build."
           options={DOMAIN_INTERESTS}
           selected={live.domainInterests}
-          onToggle={(value) =>
-            onDraftChange({ domains: toggleInList(live.domainInterests, value) })
-          }
+          onToggle={(value) => {
+            const next = toggleInList(live.domainInterests, value);
+            onDraftChange({ domains: next });
+            setSkills("domainInterests", next);
+          }}
         />
       </div>
 
@@ -186,7 +235,7 @@ export function ProfileSkillGraphForm({
         <LiveIdCard
           username={username}
           live={live}
-          saving={saving}
+          saving={saving || isSubmitting}
           saved={saved}
           submitLabel={submitLabel}
           isOnboarding={isOnboarding}

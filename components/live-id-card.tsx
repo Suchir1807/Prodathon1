@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Loader2 } from "lucide-react";
+import { Check } from "lucide-react";
 
 import { UserAvatar } from "@/components/user-avatar";
 import { Button } from "@/components/ui/button";
@@ -84,13 +84,12 @@ export function LiveIdCard({
 
       <Button
         type="submit"
-        disabled={saving}
+        loading={saving}
         className={cn(
           "mt-6 h-12 w-full border-transparent bg-[#ccff00] text-base font-semibold text-[#0a0f1c]",
           "hover:border-transparent hover:bg-[#d6ff4a] hover:text-[#0a0f1c] hover:shadow-[0_0_18px_rgba(204,255,0,0.55)]",
         )}
       >
-        {saving ? <Loader2 className="animate-spin" /> : null}
         {!saving && saved && !isOnboarding ? <Check /> : null}
         {saving ? "Saving..." : submitLabel}
       </Button>

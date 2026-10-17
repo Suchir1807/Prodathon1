@@ -1,7 +1,13 @@
 import { withAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
 
-const REQUIRES_ONBOARDING = ["/workspace", "/dashboard", "/messages"];
+const REQUIRES_ONBOARDING = [
+  "/workspace",
+  "/dashboard",
+  "/messages",
+  "/trading-floor",
+  "/sprint",
+];
 
 export default withAuth(
   function middleware(req) {
@@ -34,9 +40,12 @@ export const config = {
   matcher: [
     "/onboarding",
     "/workspace",
+    "/workspace/:path*",
     "/profile",
     "/profile/:path*",
     "/dashboard",
     "/messages",
+    "/trading-floor",
+    "/sprint",
   ],
 };

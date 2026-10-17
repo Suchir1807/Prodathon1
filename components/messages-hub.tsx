@@ -41,6 +41,7 @@ export function MessagesHub({ initialChatId }: { initialChatId?: string }) {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
   const scroller = useRef<HTMLDivElement>(null);
+  const sendRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -103,9 +104,10 @@ export function MessagesHub({ initialChatId }: { initialChatId?: string }) {
 
   async function send(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!active || sending) return;
+    if (!active || sendRef.current) return;
     const text = draft.trim();
     if (!text) return;
+    sendRef.current = true;
     setSending(true);
     setError("");
     try {
@@ -122,6 +124,7 @@ export function MessagesHub({ initialChatId }: { initialChatId?: string }) {
       setError(sendError instanceof Error ? sendError.message : "Could not send message.");
     } finally {
       setSending(false);
+      sendRef.current = false;
     }
   }
 

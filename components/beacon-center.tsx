@@ -124,7 +124,7 @@ export function BeaconCenter() {
         </div>
         <Button
           onClick={() => setOpen(true)}
-          className="animate-pulse border-red-300/40 bg-red-600 text-white hover:bg-red-500"
+          className="animate-pulse border-red-300/40 bg-red-600 text-white shadow-[0_0_15px_rgba(225,29,72,0.5)] transition-transform hover:scale-[1.03] hover:bg-red-500"
         >
           <Siren /> Activate Beacon
         </Button>
@@ -185,9 +185,41 @@ export function BeaconCenter() {
           </AnimatePresence>
         </motion.div>
       ) : (
-        <div className="flex items-center gap-2 border border-dashed border-white/10 px-4 py-4 text-sm text-slate-500">
-          <Radio className="size-4" />
-          {error || "No active beacons. The local channel is clear."}
+        <div className="relative isolate flex min-h-28 items-center overflow-hidden rounded-xl border border-dashed border-emerald-400/15 bg-[#070d16] px-5 py-4">
+          <div className="pointer-events-none absolute right-5 top-1/2 -z-10 size-24 -translate-y-1/2">
+            <motion.div
+              aria-hidden="true"
+              className="absolute inset-0 rounded-full border border-emerald-400/20"
+              animate={{ scale: [0.3, 1.5], opacity: [0.7, 0] }}
+              transition={{ duration: 2.8, repeat: Infinity, ease: "easeOut" }}
+            />
+            <motion.div
+              aria-hidden="true"
+              className="absolute inset-3 rounded-full border border-cyan-400/20"
+              animate={{ scale: [0.4, 1.35], opacity: [0.65, 0] }}
+              transition={{ duration: 2.8, delay: 0.8, repeat: Infinity, ease: "easeOut" }}
+            />
+            <motion.div
+              aria-hidden="true"
+              className="absolute inset-6 rounded-full border border-emerald-300/25"
+              animate={{ scale: [0.5, 1.2], opacity: [0.6, 0] }}
+              transition={{ duration: 2.8, delay: 1.6, repeat: Infinity, ease: "easeOut" }}
+            />
+            <span className="absolute inset-[42%] rounded-full bg-emerald-300 shadow-[0_0_14px_rgba(110,231,183,0.8)]" />
+          </div>
+          <div className="relative flex items-center gap-3">
+            <span className="grid size-9 shrink-0 place-items-center rounded-lg border border-emerald-400/15 bg-emerald-400/[0.06] text-emerald-300">
+              <Radio className="size-4" />
+            </span>
+            <div>
+              <p className="text-xs font-semibold tracking-wide text-emerald-200 uppercase">
+                {error ? "Radar offline" : "Radar sweeping"}
+              </p>
+              <p className="mt-1 text-xs text-slate-400">
+                {error || "Local channel clear. Scanning Bengaluru for nearby developers."}
+              </p>
+            </div>
+          </div>
         </div>
       )}
 

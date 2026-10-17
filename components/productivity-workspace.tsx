@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, Check, ChevronDown, ChevronUp, Clock3, GripVertical, Loader2, MessageSquare, Plus, Save, Send } from "lucide-react";
+import { ArrowLeft, ArrowRight, Braces, Check, ChevronDown, ChevronUp, Clock3, Code2, GripVertical, ListTodo, Loader2, MessageSquare, Plus, Save, Send, Sparkles, X } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -28,12 +28,21 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { workspaceTaskSchema, type WorkspaceTaskValues } from "@/lib/validation/schemas";
+import {
+  breakdownResultSchema,
+  codeResultSchema,
+  mockDataResultSchema,
+  type GeneratedTask,
+  type SprintAssistantCommand,
+  type SprintAssistantResult,
+} from "@/lib/ai/sprint-assistant";
 import type { WorkspaceTaskStatus, WorkspaceType } from "@/models/Workspace";
 
 type WorkspaceTask = {
   id: string;
   title: string;
   status: WorkspaceTaskStatus;
+  priority?: number;
 };
 
 type WorkspaceData = {
@@ -110,6 +119,9 @@ function SortableTaskCard({
             <GripVertical className="size-4" />
           </button>
           <p className="min-w-0 flex-1 break-words text-sm leading-relaxed text-slate-200">{task.title}</p>
+          {task.priority !== undefined ? (
+            <span className="shrink-0 font-mono text-[10px] text-[#ccff00]/80">P{task.priority}</span>
+          ) : null}
         </div>
         <div className="mt-3 flex flex-wrap justify-between gap-1">
           {index > 0 ? (
@@ -317,6 +329,135 @@ function WorkspaceChatDock({
   );
 }
 
+function SprintAssistantPanel({
+  workspaceId,
+  disabled,
+  onAddTasks,
+  onAppendSnippet,
+  onClose,
+}: {
+  workspaceId: string;
+  disabled: boolean;
+  onAddTasks: (tasks: GeneratedTask[]) => Promise<void>;
+  onAppendSnippet: (heading: string, language: string, content: string) => void;
+  onClose: () => void;
+}) {
+  const [prompt, setPrompt] = useState("");
+  const [runningCommand, setRunningCommand] = useState<SprintAssistantCommand | null>(null);
+  const [result, setResult] = useState<SprintAssistantResult | null>(null);
+  const [error, setError] = useState("");
+
+  async function run(command: SprintAssistantCommand) {
+    if (runningCommand || disabled || !prompt.trim()) return;
+    setRunningCommand(command);
+    setResult(null);
+    setError("");
+
+    try {
+      const response = await fetch("/api/ai/sprint-assistant", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workspaceId, command, prompt }),
+      });
+      const data = (await response.json()) as { command?: string; result?: unknown; error?: string };
+      if (!response.ok) throw new Error(data.error ?? "AI generation failed.");
+      if (data.command !== command) throw new Error("The AI response did not match the requested command.");
+
+      if (command === "breakdown") {
+        const parsed = breakdownResultSchema.safeParse(data.result);
+        if (!parsed.success) throw new Error("The AI response did not match the requested format.");
+        const breakdown: SprintAssistantResult = { command, result: parsed.data };
+        setResult(breakdown);
+        await onAddTasks(breakdown.result.tasks);
+        toast.success("Five prioritized tasks added to the board");
+      } else if (command === "schema") {
+        const parsed = codeResultSchema.safeParse(data.result);
+        if (!parsed.success) throw new Error("The AI response did not match the requested format.");
+        const schema: SprintAssistantResult = { command, result: parsed.data };
+        setResult(schema);
+        onAppendSnippet("AI-generated schema draft", "typescript", schema.result.code);
+        toast.success("Schema draft added to the scratchpad");
+      } else {
+        const parsed = mockDataResultSchema.safeParse(data.result);
+        if (!parsed.success) throw new Error("The AI response did not match the requested format.");
+        const mockData: SprintAssistantResult = { command, result: parsed.data };
+        setResult(mockData);
+        onAppendSnippet("AI-generated mock data", "json", JSON.stringify(mockData.result.fixtures, null, 2));
+        toast.success("Mock data added to the scratchpad");
+      }
+    } catch (generationError) {
+      const message = generationError instanceof Error ? generationError.message : "AI generation failed.";
+      setError(message);
+      toast.error("AI action failed", { description: message });
+    } finally {
+      setRunningCommand(null);
+    }
+  }
+
+  return (
+    <section className="mb-5 rounded-lg border border-[#ccff00]/20 bg-[#10182b]/75 p-4 shadow-[0_0_28px_rgba(204,255,0,0.04)]" aria-label="AI Co-Founder actions">
+      <header className="mb-3 flex items-start justify-between gap-4">
+        <div className="flex items-start gap-2.5">
+          <span className="grid size-8 place-items-center rounded-md border border-[#ccff00]/20 bg-[#ccff00]/[0.07] text-[#ccff00]">
+            <Sparkles className="size-4" />
+          </span>
+          <div>
+            <h2 className="text-sm font-semibold text-white">AI Accelerate</h2>
+            <p className="mt-1 text-xs text-slate-500">Generate prioritized tasks, a schema draft, or realistic fixtures.</p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close AI Accelerate"
+          className="rounded p-1 text-slate-500 transition-colors hover:text-white focus-visible:outline-2 focus-visible:outline-[#ccff00]"
+        >
+          <X className="size-4" />
+        </button>
+      </header>
+      <Label htmlFor="ai-accelerate-prompt" className="sr-only">Describe the goal or feature</Label>
+      <textarea
+        id="ai-accelerate-prompt"
+        value={prompt}
+        onChange={(event) => setPrompt(event.target.value)}
+        maxLength={2000}
+        disabled={disabled || runningCommand !== null}
+        placeholder="Describe a project goal, feature, or data contract…"
+        className="min-h-20 w-full resize-y rounded-md border border-white/10 bg-[#080d17] p-3 font-mono text-sm text-slate-200 outline-none placeholder:text-slate-600 focus-visible:border-[#ccff00]/40 focus-visible:ring-2 focus-visible:ring-[#ccff00]/10 disabled:opacity-50"
+      />
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Button type="button" size="sm" onClick={() => void run("breakdown")} loading={runningCommand === "breakdown"} disabled={disabled || !prompt.trim() || runningCommand !== null}>
+          <ListTodo /> /breakdown
+        </Button>
+        <Button type="button" size="sm" variant="outline" onClick={() => void run("schema")} loading={runningCommand === "schema"} disabled={disabled || !prompt.trim() || runningCommand !== null}>
+          <Braces /> /schema
+        </Button>
+        <Button type="button" size="sm" variant="outline" onClick={() => void run("mockdata")} loading={runningCommand === "mockdata"} disabled={disabled || !prompt.trim() || runningCommand !== null}>
+          <Code2 /> /mockdata
+        </Button>
+      </div>
+      {error ? <p role="alert" className="mt-3 text-xs text-red-300">{error}</p> : null}
+      {result?.command === "breakdown" ? (
+        <ol className="mt-4 space-y-1.5 border-t border-white/8 pt-3">
+          {result.result.tasks.map((task, index) => (
+            <li key={`${task.priority}-${index}`} className="flex flex-wrap items-center gap-2 text-xs text-slate-300">
+              <span className="font-mono text-[#ccff00]">P{task.priority}</span>
+              <span className="flex-1">{task.title}</span>
+              <span className="text-slate-500">{task.status}</span>
+            </li>
+          ))}
+        </ol>
+      ) : null}
+      {result?.command === "schema" ? (
+        <p className="mt-3 border-t border-white/8 pt-3 text-xs text-emerald-300">Schema draft appended to the shared scratchpad.</p>
+      ) : null}
+      {result?.command === "mockdata" ? (
+        <p className="mt-3 border-t border-white/8 pt-3 text-xs text-emerald-300">{result.result.fixtures.length} fixture(s) appended to the shared scratchpad.</p>
+      ) : null}
+    </section>
+  );
+}
+
 export function ProductivityWorkspace({
   workspace,
   currentUserId,
@@ -337,6 +478,7 @@ export function ProductivityWorkspace({
   const [now, setNow] = useState<number | null>(null);
   const [scratchpadMode, setScratchpadMode] = useState<"write" | "preview">("write");
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
+  const [aiOpen, setAiOpen] = useState(false);
   const taskMutationRef = useRef(false);
   const taskMutationRevisionRef = useRef(0);
   const sensors = useSensors(
@@ -473,6 +615,43 @@ export function ProductivityWorkspace({
     }
   }
 
+  async function addGeneratedTasks(generatedTasks: GeneratedTask[]) {
+    if (taskMutationRef.current || pendingTask) {
+      throw new Error("Wait for the current task update to finish before adding generated tasks.");
+    }
+    taskMutationRevisionRef.current += 1;
+    taskMutationRef.current = true;
+    setPendingTask("ai");
+    setBoardError("");
+    try {
+      const response = await fetch(`/api/workspaces/${workspace.id}/tasks`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tasks: [...generatedTasks]
+            .sort((first, second) => first.priority - second.priority)
+            .map(({ title, status, priority }) => ({ title, status, priority })),
+        }),
+      });
+      const data = (await response.json()) as { tasks?: WorkspaceTask[]; error?: string };
+      if (!response.ok) throw new Error(data.error ?? "Unable to add generated tasks.");
+      setTasks(data.tasks ?? []);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to add generated tasks.";
+      setBoardError(message);
+      throw error;
+    } finally {
+      setPendingTask(null);
+      taskMutationRef.current = false;
+    }
+  }
+
+  function appendGeneratedSnippet(heading: string, language: string, content: string) {
+    const separator = scratchpad.trim() ? "\n\n" : "";
+    editScratchpad(`${scratchpad}${separator}## ${heading}\n\n\`\`\`${language}\n${content}\n\`\`\``);
+    setScratchpadMode("write");
+  }
+
   async function moveTaskToStatus(taskId: string, targetStatus: WorkspaceTaskStatus) {
     if (taskMutationRef.current || pendingTask) return;
     const previousTasks = tasks;
@@ -561,7 +740,20 @@ export function ProductivityWorkspace({
             </div>
           </div>
         ) : null}
+        <Button type="button" size="sm" variant={aiOpen ? "outline" : "default"} onClick={() => setAiOpen((current) => !current)} disabled={expired}>
+          <Sparkles /> {aiOpen ? "Close AI" : "AI Accelerate"}
+        </Button>
       </header>
+
+      {aiOpen ? (
+        <SprintAssistantPanel
+          workspaceId={workspace.id}
+          disabled={expired}
+          onAddTasks={addGeneratedTasks}
+          onAppendSnippet={appendGeneratedSnippet}
+          onClose={() => setAiOpen(false)}
+        />
+      ) : null}
 
       <div className="grid flex-1 gap-7 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
         <section className="flex min-h-[55dvh] flex-col">

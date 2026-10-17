@@ -7,6 +7,7 @@ export interface IWorkspaceTask {
   id: string;
   title: string;
   status: WorkspaceTaskStatus;
+  priority?: number;
 }
 
 export interface IWorkspace {
@@ -28,6 +29,7 @@ const WorkspaceTaskSchema = new Schema<IWorkspaceTask>(
       enum: ["todo", "doing", "done"],
       default: "todo",
     },
+    priority: { type: Number, min: 1, max: 5 },
   },
   { _id: false },
 );

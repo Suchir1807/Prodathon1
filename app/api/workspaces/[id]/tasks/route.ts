@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 
 import { findAuthorizedWorkspace } from "@/lib/authorized-workspace";
-import { workspaceTaskSchema } from "@/lib/validation/schemas";
+import { generatedWorkspaceTasksSchema, workspaceTaskSchema } from "@/lib/validation/schemas";
 import type { WorkspaceTaskStatus } from "@/models/Workspace";
 
 type RouteContext = { params: Promise<{ id: string }> };
@@ -12,8 +12,13 @@ function isTaskStatus(value: unknown): value is WorkspaceTaskStatus {
   return TASK_STATUSES.some((status) => status === value);
 }
 
-function serializeTasks(tasks: { id: string; title: string; status: WorkspaceTaskStatus }[]) {
-  return tasks.map((task) => ({ id: task.id, title: task.title, status: task.status }));
+function serializeTasks(tasks: { id: string; title: string; status: WorkspaceTaskStatus; priority?: number }[]) {
+  return tasks.map((task) => ({
+    id: task.id,
+    title: task.title,
+    status: task.status,
+    ...(task.priority !== undefined ? { priority: task.priority } : {}),
+  }));
 }
 
 export async function GET(_request: Request, { params }: RouteContext) {
@@ -38,6 +43,26 @@ export async function POST(request: Request, { params }: RouteContext) {
   } catch {
     return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
   }
+  if (
+    body &&
+    typeof body === "object" &&
+    !Array.isArray(body) &&
+    "tasks" in body
+  ) {
+    const result = generatedWorkspaceTasksSchema.safeParse(body);
+    if (!result.success) {
+      return NextResponse.json(
+        { error: result.error.issues[0]?.message ?? "Invalid generated tasks." },
+        { status: 400 },
+      );
+    }
+    access.workspace.tasks.push(
+      ...result.data.tasks.map((task) => ({ ...task, id: randomUUID() })),
+    );
+    await access.workspace.save();
+    return NextResponse.json({ tasks: serializeTasks(access.workspace.tasks) }, { status: 201 });
+  }
+
   const result = workspaceTaskSchema.safeParse(body);
   if (!result.success) {
     return NextResponse.json(

@@ -58,6 +58,14 @@ export const workspaceTaskSchema = z.object({
   title: z.string().trim().min(1, "Enter a task title.").max(160),
 }).strict();
 
+export const generatedWorkspaceTasksSchema = z.object({
+  tasks: z.array(z.object({
+    title: z.string().trim().min(1, "Enter a task title.").max(160),
+    status: z.enum(["todo", "doing", "done"]),
+    priority: z.number().int().min(1).max(5),
+  }).strict()).length(5),
+}).strict();
+
 export type LoginValues = z.infer<typeof loginSchema>;
 export type SignupValues = z.infer<typeof signupSchema>;
 export type ProfileValues = z.infer<typeof profileSchema>;

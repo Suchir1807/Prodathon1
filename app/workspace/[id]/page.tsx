@@ -79,6 +79,7 @@ export default async function ProductivityWorkspacePage({
           id: task.id,
           title: task.title,
           status: task.status,
+          priority: task.priority,
         })),
         expiresAt: workspace.expiresAt?.toISOString() ?? null,
       }}

@@ -27,7 +27,9 @@ export default async function ProductivityWorkspacePage({
     return <div>Error: Invalid workspace ID {id}</div>;
   }
 
-  const workspace = await Workspace.findById(id);
+  const workspace = await Workspace.findById(id)
+    .select("_id users type scratchpad tasks expiresAt")
+    .lean();
   console.log(
     "[workspace] Fetched workspace:",
     workspace

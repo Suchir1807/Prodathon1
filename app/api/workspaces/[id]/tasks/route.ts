@@ -14,7 +14,7 @@ function serializeTasks(tasks: { id: string; title: string; status: WorkspaceTas
 
 export async function GET(_request: Request, { params }: RouteContext) {
   const { id } = await params;
-  const access = await findAuthorizedWorkspace(id);
+  const access = await findAuthorizedWorkspace(id, true);
   if ("error" in access) {
     return NextResponse.json({ error: access.error }, { status: access.status });
   }

@@ -1,5 +1,6 @@
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
+import { Types } from "mongoose";
 
 import { authOptions } from "@/lib/auth";
 import connectDB from "@/lib/mongodb";
@@ -38,7 +39,12 @@ export async function GET(request: Request) {
       .select("username displayName skillsHave")
       .sort({ username: 1 })
       .limit(10)
-      .lean();
+    .lean<{
+      _id: Types.ObjectId;
+      username: string;
+      displayName?: string;
+      skillsHave?: string[];
+    }[]>();
 
     return NextResponse.json({
       users: users.map((user) => ({

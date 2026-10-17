@@ -1,9 +1,25 @@
 import { NextResponse } from "next/server";
+import { Types } from "mongoose";
 
 import connectDB from "@/lib/mongodb";
 import { requireCurrentUser } from "@/lib/session-user";
 import { barterSchema } from "@/lib/validation/schemas";
 import Barter from "@/models/Barter";
+
+type BarterAuthorProjection = {
+  _id: Types.ObjectId;
+  username: string;
+  displayName?: string;
+};
+
+type BarterFeedProjection = {
+  _id: Types.ObjectId;
+  authorId: BarterAuthorProjection;
+  skillOffered: string;
+  skillNeeded: string;
+  description: string;
+  createdAt?: Date;
+};
 
 export async function GET() {
   const current = await requireCurrentUser();
@@ -12,16 +28,13 @@ export async function GET() {
   try {
     await connectDB();
     const barters = await Barter.find({ status: "open" })
+      .select("_id authorId skillOffered skillNeeded description createdAt")
       .sort({ createdAt: -1 })
-      .populate("authorId", "username displayName")
-      .lean();
+      .populate<{ authorId: BarterAuthorProjection }>("authorId", "username displayName")
+      .lean<BarterFeedProjection[]>();
     return NextResponse.json({
       barters: barters.map((barter) => {
-        const author = barter.authorId as unknown as {
-          _id: { toString(): string };
-          username: string;
-          displayName?: string;
-        };
+        const { authorId: author } = barter;
         return {
           id: barter._id.toString(),
           author: {

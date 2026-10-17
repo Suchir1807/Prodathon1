@@ -63,7 +63,7 @@ export async function POST(request: Request) {
     }
 
     await connectDB();
-    const receiver = await User.findById(receiverId);
+    const receiver = await User.findById(receiverId).select("_id").lean();
     if (!receiver) {
       return NextResponse.json({ error: "User not found." }, { status: 404 });
     }
@@ -72,7 +72,7 @@ export async function POST(request: Request) {
       sender: current._id,
       receiver: receiver._id,
       status: "pending",
-    });
+    }).select("_id").lean();
     if (existing) {
       return NextResponse.json({ error: "Invite already pending." }, { status: 409 });
     }
@@ -142,7 +142,7 @@ export async function PUT(request: Request) {
 
     const partner = await User.findById(senderId).select(
       "username displayName skillsHave skillsLearn domainInterests",
-    );
+    ).lean();
     if (!partner) {
       return NextResponse.json({ error: "Partner not found." }, { status: 404 });
     }

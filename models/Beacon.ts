@@ -27,6 +27,7 @@ const BeaconSchema = new Schema<IBeacon>(
 );
 
 BeaconSchema.index({ createdAt: 1 }, { expireAfterSeconds: 12 * 60 * 60 });
+BeaconSchema.index({ active: 1, urgency: 1, createdAt: -1 });
 
 const Beacon: Model<IBeacon> =
   (mongoose.models.Beacon as Model<IBeacon> | undefined) ??

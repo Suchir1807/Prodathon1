@@ -6,7 +6,7 @@ type RouteContext = { params: Promise<{ id: string }> };
 
 export async function GET(_request: Request, { params }: RouteContext) {
   const { id } = await params;
-  const access = await findAuthorizedWorkspace(id);
+  const access = await findAuthorizedWorkspace(id, true);
   if ("error" in access) {
     return NextResponse.json({ error: access.error }, { status: access.status });
   }

@@ -36,6 +36,8 @@ const BarterSchema = new Schema<IBarter>(
   { timestamps: true },
 );
 
+BarterSchema.index({ status: 1, createdAt: -1 });
+
 const Barter: Model<IBarter> =
   (mongoose.models.Barter as Model<IBarter> | undefined) ??
   mongoose.model<IBarter>("Barter", BarterSchema);

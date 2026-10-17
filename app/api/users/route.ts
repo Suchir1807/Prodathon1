@@ -1,4 +1,5 @@
 import { getServerSession } from "next-auth";
+import { Types } from "mongoose";
 import { NextResponse } from "next/server";
 
 import { authOptions } from "@/lib/auth";
@@ -14,7 +15,7 @@ export async function GET() {
 
   try {
     await connectDB();
-    const current = await User.findOne({ username }).select("_id");
+    const current = await User.findOne({ username }).select("_id").lean();
     if (!current) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
@@ -22,7 +23,14 @@ export async function GET() {
     const users = await User.find({ _id: { $ne: current._id } })
       .select("username displayName skillsHave skillsLearn domainInterests")
       .sort({ username: 1 })
-      .lean();
+      .lean<{
+        _id: Types.ObjectId;
+        username: string;
+        displayName?: string;
+        skillsHave?: string[];
+        skillsLearn?: string[];
+        domainInterests?: string[];
+      }[]>();
 
     return NextResponse.json(
       users.map((user) => ({

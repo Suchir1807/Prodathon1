@@ -25,7 +25,7 @@ export async function POST(request: Request) {
     const { username, password } = result.data;
     await connectDB();
 
-    const existing = await User.findOne({ username });
+    const existing = await User.findOne({ username }).select("_id").lean();
     if (existing) {
       return NextResponse.json(
         { error: "Username is already taken." },

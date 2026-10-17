@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { Types } from "mongoose";
 
 import connectDB from "@/lib/mongodb";
 import { requireCurrentUser } from "@/lib/session-user";
@@ -6,6 +7,21 @@ import { beaconSchema } from "@/lib/validation/schemas";
 import Beacon from "@/models/Beacon";
 
 const BEACON_TTL_MS = 12 * 60 * 60 * 1000;
+
+type BeaconAuthorProjection = {
+  _id: Types.ObjectId;
+  username: string;
+  displayName?: string;
+};
+
+type BeaconFeedProjection = {
+  _id: Types.ObjectId;
+  authorId: BeaconAuthorProjection;
+  eventLocation: string;
+  missingSkill: string;
+  urgency: "High" | "Critical";
+  createdAt: Date;
+};
 
 export async function GET() {
   const current = await requireCurrentUser();
@@ -17,17 +33,14 @@ export async function GET() {
       active: true,
       createdAt: { $gte: new Date(Date.now() - BEACON_TTL_MS) },
     })
+      .select("_id authorId eventLocation missingSkill urgency createdAt")
       .sort({ urgency: -1, createdAt: -1 })
-      .populate("authorId", "username displayName")
-      .lean();
+      .populate<{ authorId: BeaconAuthorProjection }>("authorId", "username displayName")
+      .lean<BeaconFeedProjection[]>();
 
     return NextResponse.json({
       beacons: beacons.map((beacon) => {
-        const author = beacon.authorId as unknown as {
-          _id: { toString(): string };
-          username: string;
-          displayName?: string;
-        };
+        const { authorId: author } = beacon;
         return {
           id: beacon._id.toString(),
           author: {

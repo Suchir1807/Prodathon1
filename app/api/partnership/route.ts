@@ -12,14 +12,14 @@ export async function GET() {
 
   try {
     await connectDB();
-    const self = await User.findById(current._id).select("partnerId");
+    const self = await User.findById(current._id).select("partnerId").lean();
     if (!self?.partnerId) {
       return NextResponse.json({ matched: false });
     }
 
     const partner = await User.findById(self.partnerId).select(
       "username displayName skillsHave skillsLearn domainInterests",
-    );
+    ).lean();
     if (!partner) {
       return NextResponse.json({ matched: false });
     }

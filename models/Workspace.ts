@@ -57,6 +57,7 @@ const WorkspaceSchema = new Schema<IWorkspace>(
 );
 
 WorkspaceSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+WorkspaceSchema.index({ users: 1, expiresAt: 1 });
 
 const Workspace: Model<IWorkspace> =
   (mongoose.models.Workspace as Model<IWorkspace> | undefined) ??

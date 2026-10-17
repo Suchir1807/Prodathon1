@@ -48,6 +48,8 @@ const UserSchema = new Schema<IUser>(
   { timestamps: true, strict: true },
 );
 
+UserSchema.index({ skillsHave: 1, username: 1 });
+
 const User: Model<IUser> =
   (mongoose.models.User as Model<IUser> | undefined) ??
   mongoose.model<IUser>("User", UserSchema);

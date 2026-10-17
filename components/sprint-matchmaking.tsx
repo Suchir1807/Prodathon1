@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LoaderCircle, Radio, Zap } from "lucide-react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 
@@ -31,12 +32,16 @@ export function SprintMatchmaking() {
         const data = (await response.json()) as MatchResponse;
         if (!response.ok) throw new Error(data.error ?? "Matchmaking failed.");
         if (data.matched && data.workspaceId) {
+          toast.success("Builder found", { description: "Opening your sprint workspace." });
+          setSearching(false);
           router.replace(`/workspace/${data.workspaceId}`);
           return;
         }
       } catch (matchError) {
         if (!cancelled) {
-          setError(matchError instanceof Error ? matchError.message : "Matchmaking failed.");
+          const message = matchError instanceof Error ? matchError.message : "Matchmaking failed.";
+          setError(message);
+          toast.error("Matchmaking interrupted", { description: message });
           setSearching(false);
         }
       } finally {
@@ -75,6 +80,7 @@ export function SprintMatchmaking() {
           onClick={() => {
             setError("");
             setSearching(true);
+            toast.info("Matchmaking started", { description: "Searching for your collaboration partner." });
           }}
           className="mt-8 h-14 min-w-64 border-[#ccff00]/70 bg-[#ccff00] px-8 text-base font-semibold text-slate-950 hover:bg-[#d9ff43] hover:text-slate-950"
         >

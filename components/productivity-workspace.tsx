@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, Check, Clock3, Loader2, Plus, Save } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
@@ -288,10 +289,25 @@ export function ProductivityWorkspace({ workspace }: { workspace: WorkspaceData 
                     <span className="min-w-6 text-right text-[11px] tabular-nums text-slate-500">{columnTasks.length}</span>
                   </header>
                   <div className="flex min-h-32 flex-col gap-2">
+                    <AnimatePresence initial={false}>
                     {columnTasks.map((task) => {
                       const index = STATUS_ORDER.indexOf(task.status);
                       return (
-                        <article key={task.id} className="rounded-md border border-white/8 bg-white/[0.025] p-3">
+                        <motion.article
+                          key={task.id}
+                          layout
+                          initial={{ opacity: 0, y: 12 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: 12 }}
+                          transition={{
+                            type: "spring",
+                            stiffness: 260,
+                            damping: 20,
+                            delay: index * 0.04,
+                          }}
+                          whileHover={{ scale: 1.015 }}
+                          className="rounded-md border border-white/8 bg-white/[0.025] p-3 transition-shadow hover:shadow-[0_0_20px_rgba(204,255,0,0.08)]"
+                        >
                           <p className="break-words text-sm leading-relaxed text-slate-200">{task.title}</p>
                           <div className="mt-3 flex flex-wrap justify-between gap-1">
                             {index > 0 ? (
@@ -320,9 +336,10 @@ export function ProductivityWorkspace({ workspace }: { workspace: WorkspaceData 
                             ) : null}
                           </div>
                           {pendingTask === task.id ? <Loader2 className="mt-1 size-3 animate-spin text-slate-500" /> : null}
-                        </article>
+                        </motion.article>
                       );
                     })}
+                    </AnimatePresence>
                     {columnTasks.length === 0 ? <p className={cn("px-1 py-2 text-xs text-slate-600")}>No tasks</p> : null}
                   </div>
                 </section>

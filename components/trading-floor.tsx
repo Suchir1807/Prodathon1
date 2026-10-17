@@ -2,9 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Handshake, Loader2, Plus } from "lucide-react";
+import { ArrowRight, Handshake, Plus } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
@@ -14,6 +16,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatUsername } from "@/lib/profile";
+import { TradingFloorSkeleton } from "@/components/ui/loading-skeletons";
 import { barterSchema, type BarterValues } from "@/lib/validation/schemas";
 
 type Trade = {
@@ -85,10 +88,14 @@ export function TradingFloor() {
       const data = (await response.json()) as { barter?: Trade; error?: string };
       if (!response.ok || !data.barter) throw new Error(data.error ?? "Unable to post trade.");
       setTrades((current) => [data.barter!, ...current]);
+      toast.success("Trade posted", { description: "Your offer is live on the Trading Floor." });
       reset();
       setModalOpen(false);
     } catch (error) {
       setFormError(error instanceof Error ? error.message : "Unable to post trade.");
+      toast.error("Trade could not be posted", {
+        description: error instanceof Error ? error.message : "Try again when your connection is stable.",
+      });
     } finally {
       setPending(null);
       mutationRef.current = false;
@@ -104,9 +111,13 @@ export function TradingFloor() {
       const response = await fetch(`/api/barters/${tradeId}/accept`, { method: "PUT" });
       const data = (await response.json()) as { workspaceId?: string; error?: string };
       if (!response.ok || !data.workspaceId) throw new Error(data.error ?? "Unable to accept trade.");
+      toast.success("Trade accepted", { description: "Opening your shared workspace." });
       router.push(`/workspace/${data.workspaceId}`);
     } catch (error) {
       setLoadError(error instanceof Error ? error.message : "Unable to accept trade.");
+      toast.error("Trade acceptance failed", {
+        description: error instanceof Error ? error.message : "Check your connection and try again.",
+      });
       setPending(null);
       mutationRef.current = false;
     }
@@ -130,16 +141,31 @@ export function TradingFloor() {
 
       {loadError ? <p role="alert" className="mb-4 text-sm text-red-300">{loadError}</p> : null}
       {loading ? (
-        <p className="flex items-center gap-2 py-12 text-sm text-slate-400">
-          <Loader2 className="size-4 animate-spin" /> Loading open trades…
-        </p>
+        <TradingFloorSkeleton />
       ) : trades.length ? (
-        <div className="columns-1 gap-4 md:columns-2 xl:columns-3">
+        <motion.div
+          initial="hidden"
+          animate="visible"
+          variants={{ visible: { transition: { staggerChildren: 0.07 } } }}
+          className="columns-1 gap-4 md:columns-2 xl:columns-3"
+        >
+          <AnimatePresence initial={false}>
           {trades.map((trade) => {
             const authorName = trade.author.displayName.trim() || formatUsername(trade.author.username);
             const isOwnTrade = trade.author.id === currentUserId;
             return (
-              <article key={trade.id} className="glass mb-4 inline-block w-full break-inside-avoid rounded-lg border border-white/8 p-4">
+              <motion.article
+                key={trade.id}
+                variants={{
+                  hidden: { opacity: 0, y: 12 },
+                  visible: { opacity: 1, y: 0 },
+                }}
+                exit={{ opacity: 0, y: 12 }}
+                layout
+                transition={{ type: "spring", stiffness: 260, damping: 20 }}
+                whileHover={{ scale: 1.015 }}
+                className="glass mb-4 inline-block w-full break-inside-avoid rounded-lg border border-white/8 p-4 transition-shadow hover:shadow-[0_0_24px_rgba(204,255,0,0.09)]"
+              >
                 <div className="flex items-center gap-2.5">
                   <UserAvatar name={authorName} className="size-9 text-[10px]" />
                   <div className="min-w-0">
@@ -170,10 +196,11 @@ export function TradingFloor() {
                     {isOwnTrade ? "Your listing" : pending === trade.id ? "Connecting…" : "Accept trade"}
                   </Button>
                 </div>
-              </article>
+              </motion.article>
             );
           })}
-        </div>
+          </AnimatePresence>
+        </motion.div>
       ) : (
         <div className="border border-dashed border-white/12 px-5 py-16 text-center">
           <Handshake className="mx-auto size-8 text-slate-600" />

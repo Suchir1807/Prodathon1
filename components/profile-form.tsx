@@ -3,9 +3,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Loader2 } from "lucide-react";
 
 import { ProfileSkillGraphForm } from "@/components/profile-skill-graph-form";
+import { ProfileSkeleton } from "@/components/ui/loading-skeletons";
 import { useIsClient, useProfile } from "@/components/profile-provider";
 import { EMPTY_PROFILE } from "@/lib/catalog";
 import { profileFromUser } from "@/lib/user-profile";
@@ -127,12 +127,7 @@ export function OnboardingForm() {
   }
 
   if (!isClient || status === "loading" || loading) {
-    return (
-      <div className="mx-auto flex max-w-6xl items-center gap-2 px-4 py-8 text-sm text-slate-400 md:px-6">
-        <Loader2 className="size-4 animate-spin text-[#ccff00]" />
-        Loading profile…
-      </div>
-    );
+    return <ProfileSkeleton />;
   }
 
   if (loadError) {

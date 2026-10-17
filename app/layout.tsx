@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 
 import { AppShell } from "@/components/app-shell";
+import { AppToaster } from "@/components/app-toaster";
 import { ProfileProvider } from "@/components/profile-provider";
 import { AuthSessionProvider } from "@/components/session-provider";
 import "./globals.css";
@@ -36,6 +37,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <ProfileProvider>
             <AppShell>{children}</AppShell>
           </ProfileProvider>
+          <AppToaster />
         </AuthSessionProvider>
       </body>
     </html>

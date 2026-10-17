@@ -2,11 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
-import { Check, Loader2 } from "lucide-react";
+import { Check } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { ProfileLogoutButton } from "@/components/profile-logout-button";
+import { ProfileSkeleton } from "@/components/ui/loading-skeletons";
 import { ToggleChip } from "@/components/toggle-chip";
 import { UserAvatar } from "@/components/user-avatar";
 import { Button } from "@/components/ui/button";
@@ -240,12 +241,7 @@ export default function ProfilePage() {
   const cardName = displayName.trim() || (username ? formatUsername(username) : "You");
 
   if (loading) {
-    return (
-      <div className="mx-auto flex max-w-6xl items-center gap-2 px-4 py-8 text-sm text-slate-400 md:px-6">
-        <Loader2 className="size-4 animate-spin text-[#ccff00]" />
-        Loading profile…
-      </div>
-    );
+    return <ProfileSkeleton />;
   }
 
   if (loadError) {

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { toast } from "sonner";
 import { ArrowLeft, Loader2, MessageSquare, Send } from "lucide-react";
 
 import { UserAvatar } from "@/components/user-avatar";
@@ -120,8 +121,11 @@ export function MessagesHub({ initialChatId }: { initialChatId?: string }) {
       if (!response.ok) throw new Error(data.error ?? "Could not send message.");
       setMessages((current) => [...current, data]);
       setDraft("");
+      toast.success("Message delivered");
     } catch (sendError) {
-      setError(sendError instanceof Error ? sendError.message : "Could not send message.");
+      const message = sendError instanceof Error ? sendError.message : "Could not send message.";
+      setError(message);
+      toast.error("Message not delivered", { description: "Check your connection and try again." });
     } finally {
       setSending(false);
       sendRef.current = false;

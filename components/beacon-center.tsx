@@ -3,8 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { AlertTriangle, Loader2, Radio, Siren } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -29,6 +31,7 @@ export function BeaconCenter() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const submissionRef = useRef(false);
+  const previousBeaconsRef = useRef<BeaconItem[] | null>(null);
   const {
     register,
     handleSubmit,
@@ -47,7 +50,23 @@ export function BeaconCenter() {
       try {
         const response = await fetch("/api/beacons", { cache: "no-store" });
         const data = (await response.json()) as { beacons?: BeaconItem[] };
-        if (!cancelled && response.ok) setBeacons(data.beacons ?? []);
+        if (!cancelled && response.ok) {
+          const nextBeacons = data.beacons ?? [];
+          const previousBeacons = previousBeaconsRef.current;
+          if (previousBeacons) {
+            const activeIds = new Set(nextBeacons.map((beacon) => beacon.id));
+            const expired = previousBeacons.filter(
+              (beacon) =>
+                !activeIds.has(beacon.id) &&
+                Date.now() - new Date(beacon.createdAt).getTime() >= 12 * 60 * 60 * 1000,
+            );
+            for (const beacon of expired) {
+              toast.info("Beacon expired", { description: `${beacon.eventLocation} is no longer active.` });
+            }
+          }
+          previousBeaconsRef.current = nextBeacons;
+          setBeacons(nextBeacons);
+        }
       } catch {
         if (!cancelled) setError("Unable to load active beacons.");
       } finally {
@@ -77,10 +96,15 @@ export function BeaconCenter() {
       const data = (await response.json()) as { beacon?: BeaconItem; error?: string };
       if (!response.ok || !data.beacon) throw new Error(data.error ?? "Unable to activate beacon.");
       setBeacons((current) => [data.beacon!, ...current]);
+      toast.success("Beacon deployed", {
+        description: `Request broadcast for ${data.beacon.eventLocation}. It expires in 12 hours.`,
+      });
       reset();
       setOpen(false);
     } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : "Unable to activate beacon.");
+      const message = submitError instanceof Error ? submitError.message : "Unable to activate beacon.";
+      setError(message);
+      toast.error("Beacon deployment failed", { description: message });
     } finally {
       setPending(false);
       submissionRef.current = false;
@@ -111,12 +135,26 @@ export function BeaconCenter() {
           <Loader2 className="size-4 animate-spin" /> Loading active beacons…
         </div>
       ) : beacons.length ? (
-        <div className="flex flex-col gap-2">
+        <motion.div
+          initial="hidden"
+          animate="visible"
+          variants={{ visible: { transition: { staggerChildren: 0.06 } } }}
+          className="flex flex-col gap-2"
+        >
+          <AnimatePresence initial={false}>
           {beacons.map((beacon) => (
-            <article
+            <motion.article
               key={beacon.id}
+              layout
+              variants={{
+                hidden: { opacity: 0, y: 12 },
+                visible: { opacity: 1, y: 0 },
+              }}
+              exit={{ opacity: 0, y: 12 }}
+              transition={{ type: "spring", stiffness: 260, damping: 20 }}
+              whileHover={{ scale: 1.015 }}
               className={cn(
-                "flex flex-wrap items-center gap-3 border-l-4 px-4 py-3",
+                "flex flex-wrap items-center gap-3 border-l-4 px-4 py-3 transition-shadow hover:shadow-[0_0_22px_rgba(248,113,113,0.1)]",
                 beacon.urgency === "Critical"
                   ? "border-red-400 bg-red-950/60 ring-1 ring-red-500/25"
                   : "border-orange-400 bg-orange-950/45 ring-1 ring-orange-500/20",
@@ -142,9 +180,10 @@ export function BeaconCenter() {
               <time className="text-[11px] text-slate-400" dateTime={beacon.createdAt}>
                 {new Date(beacon.createdAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
               </time>
-            </article>
+            </motion.article>
           ))}
-        </div>
+          </AnimatePresence>
+        </motion.div>
       ) : (
         <div className="flex items-center gap-2 border border-dashed border-white/10 px-4 py-4 text-sm text-slate-500">
           <Radio className="size-4" />

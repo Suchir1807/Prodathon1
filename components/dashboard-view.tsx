@@ -3,6 +3,7 @@
 import Link from "next/link";
 
 import { BeaconCenter } from "@/components/beacon-center";
+import { DashboardSkeleton } from "@/components/ui/loading-skeletons";
 import { useIsClient, useProfile } from "@/components/profile-provider";
 import { profileReady } from "@/lib/profile";
 
@@ -12,18 +13,20 @@ export function DashboardView() {
   const completion = profileCompletion(profile);
   const activeQuest = quests[0];
 
+  if (!isClient) return <DashboardSkeleton />;
+
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-5 md:px-6">
       <BeaconCenter />
       <section className="grid gap-3 sm:grid-cols-2">
         <Stat
           label="Profile completion"
-          value={isClient ? `${completion}%` : "—"}
+          value={`${completion}%`}
           hint={profileReady(profile) ? "Skill graph ready" : "Add skills on your profile"}
         />
         <Stat
           label="Active quests"
-          value={isClient ? String(quests.length) : "—"}
+          value={String(quests.length)}
           hint="Accepted collaborations"
         />
       </section>

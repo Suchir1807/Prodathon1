@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import {
   Hexagon,
+  Info,
   LayoutDashboard,
   Menu,
   MessageSquare,
@@ -34,6 +35,7 @@ const LINKS = [
   { href: "/messages", label: "Messages", icon: MessageSquare },
   { href: "/trading-floor", label: "Trading Floor", icon: Repeat2 },
   { href: "/sprint", label: "Flash Build", icon: Zap },
+  { href: "/info", label: "Info", icon: Info },
 ];
 
 const TITLES: Record<string, string> = {
@@ -43,6 +45,7 @@ const TITLES: Record<string, string> = {
   "/messages": "Messages",
   "/trading-floor": "Trading Floor",
   "/sprint": "12-Hour Flash Build",
+  "/info": "How it Works",
   "/profile": "Profile",
 };
 

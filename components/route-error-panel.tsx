@@ -38,7 +38,7 @@ export function RouteErrorPanel({
             Retry connection
           </Button>
           <Button asChild variant="outline">
-            <Link href="/">Return to CoFoundry</Link>
+            <Link href="/">Return to Skillin</Link>
           </Button>
         </div>
       </section>

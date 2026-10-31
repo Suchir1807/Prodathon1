@@ -60,7 +60,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
 
-  const title = TITLES[pathname] ?? "CoFoundry";
+  const title = TITLES[pathname] ?? "Skillin";
 
   return (
     <div className="min-h-dvh">
@@ -102,7 +102,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             {open ? <X className="size-4" /> : <Menu className="size-4" />}
           </button>
           <p className="min-w-0 flex-1 truncate text-sm text-slate-400">
-            CoFoundry
+            Skillin
             <span className="px-2 text-slate-600">/</span>
             <span className="text-white">{title}</span>
           </p>
@@ -158,7 +158,7 @@ function AppSidebar({
             <Hexagon className="size-4" />
           </span>
           <span className={cn("truncate text-sm font-semibold tracking-tight text-white", isCollapsed && "md:hidden")}>
-            CoFoundry
+            Skillin
           </span>
         </Link>
         <button

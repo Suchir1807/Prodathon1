@@ -19,11 +19,11 @@ export function publicUserToPartner(user: PublicUser): Partner {
     canTeach: user.skillsHave ?? [],
     wantsToLearn: user.skillsLearn ?? [],
     domains: user.domainInterests ?? [],
-    role: "CoFoundry member",
+    role: "Skillin member",
     location: "Remote",
     blurb:
       user.domainInterests.length > 0
         ? user.domainInterests.slice(0, 3).join(" · ")
-        : "Building with peers on CoFoundry",
+        : "Building with peers on Skillin",
   };
 }

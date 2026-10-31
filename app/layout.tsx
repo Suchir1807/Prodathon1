@@ -20,8 +20,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "CoFoundry",
-    template: "%s · CoFoundry",
+    default: "Skillin",
+    template: "%s · Skillin",
   },
   description:
     "Peer-to-peer skill exchange. Match with a partner and ship a 3-day collaborative quest.",

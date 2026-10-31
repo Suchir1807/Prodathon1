@@ -23,7 +23,7 @@ const GUIDE_CARDS = [
     title: "The Live ID Card",
     eyebrow: "Your builder profile",
     description:
-      "Your profile is your signal to the network. Set up your Skill Graph so CoFoundry can understand what you know, what you want to learn, and match you with the right collaborators.",
+      "Your profile is your signal to the network. Set up your Skill Graph so Skillin can understand what you know, what you want to learn, and match you with the right collaborators.",
     details: [
       "Sprints tracks the builds you have taken on.",
       "Followers and Following show your growing builder network.",
@@ -139,7 +139,7 @@ export function InfoGuide() {
           <div className="max-w-2xl">
             <p className="inline-flex items-center gap-2 text-[10px] font-semibold tracking-[0.22em] text-emerald-300/75 uppercase">
               <span className="size-1.5 rounded-full bg-emerald-300 shadow-[0_0_10px_rgba(110,231,183,0.8)]" />
-              CoFoundry field guide
+              Skillin field guide
             </p>
             <h1 className="mt-3 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
               How it{" "}
@@ -185,7 +185,7 @@ export function InfoGuide() {
             </h2>
           </div>
           <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[10px] text-slate-400">
-            5 ways to build on CoFoundry
+            5 ways to build on Skillin
           </span>
         </div>
 

@@ -20,7 +20,7 @@ export default function GlobalError({
     <html lang="en" className="dark min-h-full antialiased">
       <body className="min-h-dvh">
         <RouteErrorPanel
-          title="CoFoundry could not finish loading."
+          title="Skillin could not finish loading."
           description="The application shell encountered an unexpected error. Retry the connection to try loading it again."
           diagnostic={error.digest}
           onRetry={retry}

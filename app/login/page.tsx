@@ -66,7 +66,7 @@ export default function LoginPage() {
 
   return (
     <AuthCard
-      title="Access CoFoundry"
+      title="Access Skillin"
       subtitle="Sign in with your username and password."
       footer={
         <>

@@ -18,7 +18,7 @@ export default function AppError({
   return (
     <RouteErrorPanel
       title="This page hit an unexpected error."
-      description="Your work is still here. Retry the connection to reload this part of CoFoundry."
+      description="Your work is still here. Retry the connection to reload this part of Skillin."
       diagnostic={error.digest}
       onRetry={retry}
     />

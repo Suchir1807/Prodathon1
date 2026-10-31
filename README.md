@@ -1,4 +1,4 @@
-# CoFoundry
+# Skillin
 
 Peer-to-peer skill exchange. Set your skills, filter for a partner, generate a 3-day quest with Gemini, and keep building in the quest group chat.
 

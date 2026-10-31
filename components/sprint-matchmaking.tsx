@@ -64,7 +64,7 @@ export function SprintMatchmaking() {
         <div className="mx-auto flex size-16 items-center justify-center border border-[#ccff00]/35 bg-[#ccff00]/[0.06] text-[#ccff00]">
           {searching ? <LoaderCircle className="size-7 animate-spin" /> : <Zap className="size-7" />}
         </div>
-        <p className="mt-7 text-xs font-semibold tracking-[0.18em] text-[#ccff00] uppercase">CoFoundry / Rapid response</p>
+        <p className="mt-7 text-xs font-semibold tracking-[0.18em] text-[#ccff00] uppercase">Skillin / Rapid response</p>
         <h1 className="mt-3 text-4xl font-semibold text-white sm:text-6xl">12-Hour Flash Build</h1>
         <p className="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-slate-400">
           Pair with one builder. Pick a sharp problem. Ship a working proof before the clock runs out.

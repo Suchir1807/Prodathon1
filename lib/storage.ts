@@ -2,12 +2,32 @@ import { PLACEHOLDER_CHAT_IDS } from "@/lib/chats";
 import { sanitizeProfile } from "@/lib/profile";
 import type { AcceptedQuest, Conversation, Profile, Quest } from "@/lib/types";
 
-const PROFILE_KEY = "cofoundry.profile";
-const QUESTS_KEY = "cofoundry.quests";
-const CHATS_KEY = "cofoundry.chats";
-const PROFILE_EVENT = "cofoundry-profile";
-const QUESTS_EVENT = "cofoundry-quests";
-const CHATS_EVENT = "cofoundry-chats";
+const PROFILE_KEY = "skillin.profile";
+const QUESTS_KEY = "skillin.quests";
+const CHATS_KEY = "skillin.chats";
+const PROFILE_EVENT = "skillin-profile";
+const QUESTS_EVENT = "skillin-quests";
+const CHATS_EVENT = "skillin-chats";
+
+const LEGACY_PROFILE_KEY = "cofoundry.profile";
+const LEGACY_QUESTS_KEY = "cofoundry.quests";
+const LEGACY_CHATS_KEY = "cofoundry.chats";
+const LEGACY_WORKSPACE_KEY = "cofoundry.workspace";
+
+function readMigratedItem(key: string, legacyKey: string) {
+  const value = window.localStorage.getItem(key);
+  if (value !== null) {
+    window.localStorage.removeItem(legacyKey);
+    return value;
+  }
+
+  const legacyValue = window.localStorage.getItem(legacyKey);
+  if (legacyValue !== null) {
+    window.localStorage.setItem(key, legacyValue);
+    window.localStorage.removeItem(legacyKey);
+  }
+  return legacyValue;
+}
 
 function emit(name: string) {
   window.dispatchEvent(new Event(name));
@@ -23,11 +43,14 @@ export function clearLocalAppState() {
   window.localStorage.removeItem(PROFILE_KEY);
   window.localStorage.removeItem(QUESTS_KEY);
   window.localStorage.removeItem(CHATS_KEY);
-  window.localStorage.removeItem("cofoundry.workspace");
+  window.localStorage.removeItem(LEGACY_PROFILE_KEY);
+  window.localStorage.removeItem(LEGACY_QUESTS_KEY);
+  window.localStorage.removeItem(LEGACY_CHATS_KEY);
+  window.localStorage.removeItem(LEGACY_WORKSPACE_KEY);
   emit(PROFILE_EVENT);
   emit(QUESTS_EVENT);
   emit(CHATS_EVENT);
-  window.dispatchEvent(new Event("cofoundry-workspace"));
+  window.dispatchEvent(new Event("skillin-workspace"));
 }
 
 function isQuest(value: unknown): value is Quest {
@@ -39,7 +62,7 @@ function isQuest(value: unknown): value is Quest {
 export function readQuests(): AcceptedQuest[] {
   if (typeof window === "undefined") return [];
   try {
-    const raw = window.localStorage.getItem(QUESTS_KEY);
+    const raw = readMigratedItem(QUESTS_KEY, LEGACY_QUESTS_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw) as unknown;
     if (!Array.isArray(parsed)) return [];
@@ -81,7 +104,7 @@ export function mergeChats(stored: Conversation[]) {
 export function readChats() {
   if (typeof window === "undefined") return mergeChats([]);
   try {
-    const raw = window.localStorage.getItem(CHATS_KEY);
+    const raw = readMigratedItem(CHATS_KEY, LEGACY_CHATS_KEY);
     if (!raw) return mergeChats([]);
     return mergeChats(parseChats(JSON.parse(raw)));
   } catch {
@@ -111,15 +134,15 @@ export const subscribeQuests = subscribe(QUESTS_EVENT);
 export const subscribeChats = subscribe(CHATS_EVENT);
 
 export function getProfileSnapshot() {
-  return window.localStorage.getItem(PROFILE_KEY) ?? "";
+  return readMigratedItem(PROFILE_KEY, LEGACY_PROFILE_KEY) ?? "";
 }
 
 export function getQuestsSnapshot() {
-  return window.localStorage.getItem(QUESTS_KEY) ?? "";
+  return readMigratedItem(QUESTS_KEY, LEGACY_QUESTS_KEY) ?? "";
 }
 
 export function getChatsSnapshot() {
-  return window.localStorage.getItem(CHATS_KEY) ?? "";
+  return readMigratedItem(CHATS_KEY, LEGACY_CHATS_KEY) ?? "";
 }
 
 export function getServerSnapshot() {

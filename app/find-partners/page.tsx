@@ -150,7 +150,7 @@ export default function FindPartnersPage() {
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 md:px-6">
       <p className="max-w-xl text-sm text-slate-400">
-        Founders who have joined CoFoundry. Send an invite to start a shared workspace.
+        Founders who have joined Skillin. Send an invite to start a shared workspace.
       </p>
 
       {partners.length === 0 ? (

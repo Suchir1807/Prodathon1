@@ -26,6 +26,7 @@ import rehypeHighlight from "rehype-highlight";
 import remarkGfm from "remark-gfm";
 import { toast } from "sonner";
 
+import { SprintWarRoom } from "@/components/sprint-war-room";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -788,6 +789,8 @@ export function ProductivityWorkspace({
           onClose={() => setAiOpen(false)}
         />
       ) : null}
+
+      <SprintWarRoom />
 
       <div className="grid flex-1 gap-7 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
         <section className="flex min-h-[55dvh] flex-col">

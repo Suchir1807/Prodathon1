@@ -1,256 +1,613 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
-import { useSession } from "next-auth/react";
+import dynamic from "next/dynamic";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useReducedMotion } from "framer-motion";
 import {
   Activity,
-  ArrowRight,
+  ArrowUp,
   Crosshair,
+  LoaderCircle,
+  LocateFixed,
   Radio,
+  ScanLine,
+  Shield,
+  Sparkles,
   Terminal,
   Zap,
 } from "lucide-react";
-import { AnimatePresence, motion } from "framer-motion";
+import type { ForceGraphMethods, NodeObject } from "react-force-graph-3d";
+import * as THREE from "three";
 
-import { BeaconCenter } from "@/components/beacon-center";
-import { DashboardSkeleton } from "@/components/ui/loading-skeletons";
-import { useIsClient, useProfile } from "@/components/profile-provider";
-import { formatUsername, profileReady } from "@/lib/profile";
-import { cn } from "@/lib/utils";
+const ForceGraph3D = dynamic(() => import("react-force-graph-3d"), {
+  ssr: false,
+});
 
-const MOCK_EVENTS = [
-  "A founder matched for a Next.js / Python sprint",
-  "New beacon deployed in the local radius",
-  "A skill trade was completed in Product Design",
-  "Two builders started a 12-hour flash build",
-  "A new React specialist joined the network",
+type DeveloperNode = {
+  id: string;
+  name: string;
+  skill: string;
+  area: string;
+  available: boolean;
+  x: number;
+  y: number;
+  z: number;
+};
+
+type DeveloperLink = {
+  source: string;
+  target: string;
+  value: number;
+};
+
+type DeveloperGraph = {
+  nodes: DeveloperNode[];
+  links: DeveloperLink[];
+};
+
+type MatchmakerResponse = {
+  skills: string[];
+  requireGreenGrid: boolean;
+  searchIntent: string;
+};
+
+const DEVELOPER_NAMES = [
+  "Aarav Mehta", "Ananya Rao", "Ishaan Kapoor", "Diya Nair", "Vihaan Shah",
+  "Mira Iyer", "Arjun Menon", "Tara Kulkarni", "Reyansh Das", "Nisha Reddy",
+  "Kabir Sethi", "Sana Thomas", "Advik Joshi", "Myra Pillai", "Rohan Bhat",
+  "Kiara Dutta", "Dev Malhotra", "Aditi Krishnan", "Neil Fernandes", "Ira Chawla",
+  "Kian Bose", "Zoya Shetty", "Aryan Khanna", "Rhea Mukherjee", "Veer Anand",
+  "Meera Subramaniam", "Samar Gill", "Navya Srinivasan", "Ayaan Roy", "Leela Varma",
+  "Dhruv Sinha", "Avni Desai", "Ritvik Jain", "Sia Mathew", "Om Prakash",
+  "Tanishka Rao", "Yash Bansal", "Saanvi Ghosh", "Parth Ahuja", "Esha Nambiar",
+  "Kartik Rao", "Amaira Sen", "Nikhil Pai", "Mahi Chopra", "Siddharth Rao",
+  "Ishita Paul", "Rudra Naik", "Aarohi Das", "Kush Agarwal", "Veda Krish",
 ];
 
-const RING_RADIUS = 38;
-const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
+const DEVELOPER_SKILLS = [
+  "Next.js", "React", "TypeScript", "Node.js", "Python",
+  "Three.js", "AI / ML", "Rust", "Product Design", "WebGL",
+];
+
+const BENGALURU_AREAS = [
+  "Indiranagar", "Koramangala", "HSR Layout", "Whitefield", "Jayanagar",
+  "Malleshwaram", "MG Road", "Bellandur", "Electronic City", "Hebbal",
+];
+
+const PLACEHOLDER = "Initialize Gemini... Type 'Find a Next.js dev on a green grid'...";
+
+const DEVELOPERS: DeveloperGraph = (() => {
+  const nodes = DEVELOPER_NAMES.map((name, index) => {
+    const angle = index * 2.399963;
+    const radius = 48 + ((index * 17) % 46);
+    const height = ((index * 29) % 54) - 27;
+
+    return {
+      id: `BLR-${String(index + 1).padStart(3, "0")}`,
+      name,
+      skill: DEVELOPER_SKILLS[index % DEVELOPER_SKILLS.length],
+      area: BENGALURU_AREAS[index % BENGALURU_AREAS.length],
+      available: index < 35,
+      x: Math.cos(angle) * radius,
+      y: height,
+      z: Math.sin(angle) * radius,
+    };
+  });
+
+  const links = nodes.flatMap((node, index) => [
+    { source: node.id, target: nodes[(index + 1) % nodes.length].id, value: 1 },
+    { source: node.id, target: nodes[(index + 7) % nodes.length].id, value: 1 },
+  ]);
+
+  return { nodes, links };
+})();
 
 export function DashboardView() {
-  const { profile, quests } = useProfile();
-  const { data: session } = useSession();
-  const isClient = useIsClient();
-  const [clock, setClock] = useState<Date | null>(null);
-  const [activityIndex, setActivityIndex] = useState(0);
-  const completion = profileCompletion(profile);
-  const activeQuest = quests[0];
-  const greetingName = profile.name.trim() || formatUsername(session?.user?.name ?? "Builder");
+  const shouldReduceMotion = useReducedMotion();
+  const graphRef = useRef<ForceGraphMethods | undefined>(undefined);
+  const graphContainerRef = useRef<HTMLDivElement>(null);
+  const rotatingRingsRef = useRef<THREE.Object3D[]>([]);
+  const nodeVisualsRef = useRef(
+    new Map<
+      string,
+      {
+        node: DeveloperNode;
+        coreMaterial: THREE.MeshBasicMaterial;
+        haloMaterial?: THREE.MeshBasicMaterial;
+      }
+    >(),
+  );
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+  const [placeholder, setPlaceholder] = useState("");
+  const [command, setCommand] = useState("");
+  const [commandResult, setCommandResult] = useState<{
+    query: string;
+    searchIntent: string;
+    matches: DeveloperNode[];
+  } | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [commandError, setCommandError] = useState<string | null>(null);
+  const [hoveredNode, setHoveredNode] = useState<DeveloperNode | null>(null);
+  const availableCount = DEVELOPERS.nodes.filter((node) => node.available).length;
+
+  const graphData = useMemo(() => DEVELOPERS, []);
+  const matchedNodeIds = useMemo(
+    () => new Set(commandResult?.matches.map((node) => node.id) ?? []),
+    [commandResult],
+  );
 
   useEffect(() => {
-    const updateClock = () => setClock(new Date());
-    updateClock();
-    const interval = window.setInterval(updateClock, 1000);
-    return () => window.clearInterval(interval);
+    const element = graphContainerRef.current;
+    if (!element) return;
+
+    const observer = new ResizeObserver(([entry]) => {
+      setDimensions({
+        width: Math.round(entry.contentRect.width),
+        height: Math.round(entry.contentRect.height),
+      });
+    });
+
+    observer.observe(element);
+    return () => observer.disconnect();
   }, []);
 
   useEffect(() => {
-    const interval = window.setInterval(
-      () => setActivityIndex((current) => (current + 1) % MOCK_EVENTS.length),
-      4500,
+    if (shouldReduceMotion) return;
+
+    let frame = 0;
+    const rotateRings = () => {
+      for (const ring of rotatingRingsRef.current) {
+        ring.rotation.z += 0.006;
+        ring.rotation.x += 0.0015;
+      }
+      frame = window.requestAnimationFrame(rotateRings);
+    };
+
+    frame = window.requestAnimationFrame(rotateRings);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      rotatingRingsRef.current = [];
+    };
+  }, [shouldReduceMotion]);
+
+  useEffect(() => {
+    for (const { node, coreMaterial, haloMaterial } of nodeVisualsRef.current.values()) {
+      const isMatch = matchedNodeIds.has(node.id);
+      const color = commandResult
+        ? isMatch
+          ? "#10b981"
+          : "#1f2937"
+        : node.available
+          ? "#10b981"
+          : "#52636a";
+
+      coreMaterial.color.set(color);
+      coreMaterial.opacity =
+        commandResult && !isMatch ? 0.8 : node.available || isMatch ? 1 : 0.56;
+      coreMaterial.transparent = commandResult ? !isMatch : !node.available;
+      if (haloMaterial) {
+        haloMaterial.opacity =
+          commandResult ? (isMatch ? 0.72 : 0.04) : node.available ? 0.62 : 0;
+      }
+    }
+  }, [commandResult, matchedNodeIds]);
+
+  useEffect(() => {
+    if (!commandResult?.matches.length) return;
+
+    const center = commandResult.matches.reduce(
+      (point, node) => ({
+        x: point.x + node.x / commandResult.matches.length,
+        y: point.y + node.y / commandResult.matches.length,
+        z: point.z + node.z / commandResult.matches.length,
+      }),
+      { x: 0, y: 0, z: 0 },
     );
-    return () => window.clearInterval(interval);
+    graphRef.current?.cameraPosition(
+      { x: center.x, y: center.y, z: center.z + 180 },
+      center,
+      1600,
+    );
+
+    const controls = graphRef.current?.controls();
+    if (controls && "autoRotate" in controls && "autoRotateSpeed" in controls) {
+      controls.autoRotate = !shouldReduceMotion;
+      controls.autoRotateSpeed = 0.16;
+    }
+  }, [commandResult, shouldReduceMotion]);
+
+  useEffect(() => {
+    let character = 0;
+    let timeout: number;
+    let interval: number;
+
+    const typePlaceholder = () => {
+      setPlaceholder(PLACEHOLDER.slice(0, character + 1));
+      character += 1;
+      if (character < PLACEHOLDER.length) {
+        timeout = window.setTimeout(typePlaceholder, 32);
+      } else {
+        timeout = window.setTimeout(() => {
+          setPlaceholder("");
+          character = 0;
+          interval = window.setTimeout(typePlaceholder, 550);
+        }, 1700);
+      }
+    };
+
+    timeout = window.setTimeout(typePlaceholder, 450);
+    return () => {
+      window.clearTimeout(timeout);
+      window.clearTimeout(interval);
+    };
   }, []);
 
-  if (!isClient) return <DashboardSkeleton />;
+  const createNodeObject = useCallback((graphNode: NodeObject) => {
+    const node = graphNode as DeveloperNode;
+    const group = new THREE.Group();
+    const core = new THREE.Mesh(
+      new THREE.SphereGeometry(node.available ? 2.8 : 2.2, 14, 14),
+      new THREE.MeshBasicMaterial({
+        color: node.available ? 0x10b981 : 0x52636a,
+        transparent: !node.available,
+        opacity: node.available ? 1 : 0.56,
+      }),
+    );
+    group.add(core);
+
+    let haloMaterial: THREE.MeshBasicMaterial | undefined;
+    if (node.available) {
+      haloMaterial = new THREE.MeshBasicMaterial({
+        color: 0x34f5bd,
+        transparent: true,
+        opacity: 0.62,
+      });
+      const halo = new THREE.Mesh(
+        new THREE.TorusGeometry(4.2, 0.22, 6, 28),
+        haloMaterial,
+      );
+      halo.rotation.x = Math.PI / 2.5;
+      group.add(halo);
+      rotatingRingsRef.current.push(halo);
+    }
+
+    nodeVisualsRef.current.set(node.id, {
+      node,
+      coreMaterial: core.material,
+      haloMaterial,
+    });
+    return group;
+  }, []);
+
+  const enableAutoRotation = useCallback(() => {
+    const controls = graphRef.current?.controls();
+    if (!controls || !("autoRotate" in controls) || !("autoRotateSpeed" in controls)) return;
+    controls.autoRotate = !shouldReduceMotion;
+    controls.autoRotateSpeed = 0.22;
+  }, [shouldReduceMotion]);
+
+  const selectNode = useCallback((node: DeveloperNode) => {
+    setHoveredNode(node);
+    const { x = 0, y = 0, z = 0 } = node;
+    graphRef.current?.cameraPosition(
+      { x: x * 1.8, y: y * 1.8, z: z * 1.8 },
+      { x, y, z },
+      900,
+    );
+  }, []);
+
+  async function submitCommand(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const query = command.trim();
+    if (!query || isLoading) return;
+
+    setIsLoading(true);
+    setCommandError(null);
+    setCommandResult(null);
+    try {
+      const response = await fetch("/api/ai/matchmaker", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query }),
+      });
+      const payload: unknown = await response.json();
+      if (!response.ok) {
+        const message =
+          payload &&
+          typeof payload === "object" &&
+          "error" in payload &&
+          typeof payload.error === "string"
+            ? payload.error
+            : "AI matching failed. Please try again.";
+        throw new Error(message);
+      }
+
+      if (
+        !payload ||
+        typeof payload !== "object" ||
+        !("skills" in payload) ||
+        !Array.isArray(payload.skills) ||
+        !payload.skills.every((skill) => typeof skill === "string") ||
+        !("requireGreenGrid" in payload) ||
+        typeof payload.requireGreenGrid !== "boolean" ||
+        !("searchIntent" in payload) ||
+        typeof payload.searchIntent !== "string"
+      ) {
+        throw new Error("AI matching returned an unexpected response format.");
+      }
+
+      const result = payload as MatchmakerResponse;
+      const normalizedSkills = result.skills.map((skill) =>
+        skill.toLowerCase().replace(/[^a-z0-9]/g, ""),
+      );
+      const matches = DEVELOPERS.nodes.filter((node) => {
+        const normalizedNodeSkill = node.skill.toLowerCase().replace(/[^a-z0-9]/g, "");
+        const matchesSkill =
+          normalizedSkills.length === 0 ||
+          normalizedSkills.some(
+            (skill) => normalizedNodeSkill.includes(skill) || skill.includes(normalizedNodeSkill),
+          );
+        return matchesSkill && (!result.requireGreenGrid || node.available);
+      });
+
+      setCommandResult({ query, searchIntent: result.searchIntent, matches });
+      setCommand("");
+    } catch (error) {
+      setCommandError(
+        error instanceof Error ? error.message : "AI matching failed. Please try again.",
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  }
 
   return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-5 px-4 py-5 md:px-6">
-      <section className="relative overflow-hidden rounded-2xl border border-emerald-400/15 bg-[#07111a] px-5 py-5 shadow-[0_0_36px_rgba(16,185,129,0.06)] sm:px-7">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(16,185,129,0.11),transparent_55%),radial-gradient(ellipse_at_bottom_right,rgba(6,182,212,0.08),transparent_50%)]" />
-        <div className="relative flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <p className="text-[10px] font-semibold tracking-[0.22em] text-emerald-300/70 uppercase">
-              Founder command center
-            </p>
-            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-white sm:text-3xl">
-              Welcome back,{" "}
-              <span className="bg-gradient-to-r from-emerald-400 to-cyan-500 bg-clip-text text-transparent">
-                {greetingName}
-              </span>
-            </h1>
-            <p className="mt-1 text-xs text-slate-400">Your network is ready when you are.</p>
-          </div>
-          <div className="flex items-center gap-3">
-            {clock ? (
-              <time className="hidden font-mono text-xs tabular-nums text-slate-400 sm:block">
-                {clock.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
-              </time>
-            ) : null}
-            <span className="inline-flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-400/[0.07] px-3 py-1.5 text-[10px] font-semibold tracking-wide text-emerald-300 uppercase">
-              <span className="relative flex size-2">
-                <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-50" />
-                <span className="relative inline-flex size-2 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.9)]" />
-              </span>
-              System online
-            </span>
-          </div>
-        </div>
-      </section>
+    <section
+      aria-label="Neural Nexus developer network"
+      className="relative isolate h-[calc(100dvh-3.5rem)] min-h-[520px] overflow-hidden bg-[#030807] text-white"
+    >
+      <div
+        ref={graphContainerRef}
+        className="absolute inset-0"
+        aria-label="Interactive three-dimensional graph of 50 simulated Bengaluru developers"
+      >
+        {dimensions.width > 0 && dimensions.height > 0 ? (
+          <ForceGraph3D
+            ref={graphRef}
+            graphData={graphData}
+            width={dimensions.width}
+            height={dimensions.height}
+            backgroundColor="#030807"
+            showNavInfo={false}
+            nodeRelSize={4}
+            nodeThreeObject={createNodeObject}
+            nodeThreeObjectExtend={false}
+            nodeLabel={(node) =>
+              `<div style="padding:8px 10px;background:rgba(3,8,7,.94);border:1px solid rgba(16,185,129,.45);border-radius:8px;color:#e5fff4;font:12px ui-monospace,monospace"><strong>${node.name}</strong><br/>${node.skill} · ${node.area}<br/><span style="color:${node.available ? "#34f5bd" : "#849096"}">${node.available ? "AVAILABLE · LOW-CARBON GRID" : "BUSY · HIGH-CARBON GRID"}</span></div>`
+            }
+            nodeColor={(node) =>
+              commandResult
+                ? matchedNodeIds.has(node.id as string)
+                  ? "#10b981"
+                  : "#1f2937"
+                : node.available
+                  ? "#10b981"
+                  : "#52636a"
+            }
+            linkColor={() => "rgba(16,185,129,0.22)"}
+            linkOpacity={0.25}
+            linkWidth={0.35}
+            linkDirectionalParticles={1}
+            linkDirectionalParticleWidth={1.2}
+            linkDirectionalParticleSpeed={0.002}
+            linkDirectionalParticleColor={() => "#34f5bd"}
+            cooldownTicks={120}
+            warmupTicks={50}
+            onEngineStop={enableAutoRotation}
+            onNodeHover={(node) => setHoveredNode(node as DeveloperNode | null)}
+            onNodeClick={(node) => selectNode(node as DeveloperNode)}
+            enableNodeDrag
+            enableNavigationControls
+          />
+        ) : null}
+      </div>
 
-      <BeaconCenter />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_28%,rgba(3,8,7,0.25)_72%,rgba(3,8,7,0.75)_100%)]" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-[#030807]/90 to-transparent" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-[#030807]/95 via-[#030807]/55 to-transparent" />
 
-      <section className="grid gap-3 sm:grid-cols-2" aria-label="Workspace metrics">
-        <article className="flex items-center justify-between overflow-hidden rounded-xl border border-white/10 bg-black/40 px-5 py-4 backdrop-blur-md">
-          <div>
-            <p className="text-[11px] tracking-wide text-slate-400 uppercase">Profile completion</p>
-            <p className="mt-2 text-sm font-medium text-white">Your signal strength</p>
-            <p className="mt-1 text-[11px] text-slate-500">
-              {profileReady(profile) ? "Skill graph ready" : "Add skills on your profile"}
-            </p>
-          </div>
-          <div className="relative grid size-20 shrink-0 place-items-center">
-            <svg viewBox="0 0 100 100" className="size-20 -rotate-90" aria-hidden="true">
-              <circle
-                cx="50"
-                cy="50"
-                r={RING_RADIUS}
-                fill="none"
-                stroke="rgba(255,255,255,0.08)"
-                strokeWidth="7"
-              />
-              <motion.circle
-                cx="50"
-                cy="50"
-                r={RING_RADIUS}
-                fill="none"
-                stroke="#22d3ee"
-                strokeWidth="7"
-                strokeLinecap="round"
-                strokeDasharray={RING_CIRCUMFERENCE}
-                initial={{ strokeDashoffset: RING_CIRCUMFERENCE }}
-                animate={{ strokeDashoffset: RING_CIRCUMFERENCE * (1 - completion / 100) }}
-                transition={{ duration: 1.2, ease: "easeOut" }}
-                style={{ filter: "drop-shadow(0 0 7px rgba(34,211,238,0.7))" }}
-              />
-            </svg>
-            <span className="absolute text-sm font-semibold text-white">{completion}%</span>
-          </div>
-        </article>
+      <header className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start justify-between gap-4 px-4 pt-4 sm:px-7 sm:pt-6">
+        <MetricReadout
+          icon={<Radio className="size-3.5" />}
+          label="Active beacons"
+          value="04"
+          detail="Local uplinks"
+          accent="emerald"
+        />
 
-        <article className="relative isolate flex items-center justify-between overflow-hidden rounded-xl border border-white/10 bg-black/40 px-5 py-4 backdrop-blur-md">
-          <div className="pointer-events-none absolute inset-0 -z-10 opacity-25 [background-image:linear-gradient(rgba(16,185,129,0.16)_1px,transparent_1px),linear-gradient(90deg,rgba(16,185,129,0.16)_1px,transparent_1px)] [background-size:24px_24px]" />
-          <div className="pointer-events-none absolute -right-6 -bottom-12 -z-10 size-40 rounded-full bg-cyan-500/10 blur-3xl" />
-          <div>
-            <p className="text-[11px] tracking-wide text-slate-400 uppercase">Active quests</p>
-            <p className="mt-2 text-3xl font-semibold tabular-nums text-white">{quests.length}</p>
-            <p className="mt-1 text-[11px] text-slate-500">Accepted collaborations</p>
+        <div className="absolute left-1/2 top-5 hidden -translate-x-1/2 text-center sm:block">
+          <div className="flex items-center justify-center gap-2 text-[10px] font-medium tracking-[0.32em] text-emerald-100/70 uppercase">
+            <ScanLine className="size-3.5 text-emerald-400" />
+            Neural Nexus
           </div>
-          <div className="grid size-14 place-items-center rounded-xl border border-cyan-300/15 bg-cyan-300/[0.06] text-cyan-300 shadow-[0_0_22px_rgba(34,211,238,0.12)]">
-            <Crosshair className="size-7" />
-          </div>
-        </article>
-      </section>
-
-      {activeQuest ? (
-        <section className="relative overflow-hidden rounded-xl border border-emerald-400/15 bg-black/40 p-6 backdrop-blur-md">
-          <div className="pointer-events-none absolute -right-6 -top-7 text-emerald-400/[0.06]">
-            <Zap className="size-40" />
-          </div>
-          <div className="relative">
-            <p className="text-[10px] font-semibold tracking-[0.18em] text-emerald-300/70 uppercase">
-              Mission in progress
-            </p>
-            <h2 className="mt-2 text-sm font-medium text-white">Current quest</h2>
-            <p className="mt-2 text-lg font-semibold text-white">{activeQuest.quest.title}</p>
-            <p className="mt-1 text-xs text-slate-400">Collaborating with {activeQuest.partnerName}</p>
-            <Link
-              href="/workspace"
-              className="mt-5 inline-flex items-center gap-2 rounded-lg border border-emerald-400/30 bg-emerald-400/10 px-3 py-2 text-xs font-semibold text-emerald-300 transition hover:bg-emerald-400/15"
-            >
-              Open workspace <ArrowRight className="size-3.5" />
-            </Link>
-          </div>
-        </section>
-      ) : (
-        <section className="group relative isolate overflow-hidden rounded-2xl border-2 border-dashed border-neutral-700 bg-[#090f18]/80 px-5 py-10 text-center transition-colors hover:border-emerald-500/50 sm:py-12">
-          <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_center,rgba(16,185,129,0.08),transparent_65%)] opacity-70 transition-opacity group-hover:opacity-100" />
-          <Terminal className="pointer-events-none absolute -right-3 -bottom-8 -z-10 size-48 rotate-6 text-emerald-300/[0.035]" />
-          <div className="mx-auto grid size-12 place-items-center rounded-xl border border-emerald-400/20 bg-emerald-400/[0.06] text-emerald-300 shadow-[0_0_24px_rgba(16,185,129,0.12)]">
-            <Zap className="size-5" />
-          </div>
-          <p className="mt-4 text-lg font-semibold text-white">Your next build starts here.</p>
-          <p className="mx-auto mt-2 max-w-md text-sm text-slate-400">
-            Find a collaborator, trade skills, and turn a good idea into a shipped project.
+          <p className="mt-1.5 font-mono text-[9px] tracking-[0.18em] text-slate-500 uppercase">
+            Bengaluru developer mesh · {DEVELOPERS.nodes.length} nodes
           </p>
-          <Link
-            href="/find-partners"
-            className="group/cta mt-6 inline-flex items-center gap-2 rounded-lg border border-emerald-300/40 bg-emerald-400 px-4 py-2.5 text-sm font-semibold text-[#06110d] shadow-[0_0_22px_rgba(16,185,129,0.22)] transition hover:scale-[1.03] hover:bg-emerald-300 hover:shadow-[0_0_30px_rgba(16,185,129,0.35)]"
-          >
-            Find a partner
-            <motion.span
-              aria-hidden="true"
-              animate={{ x: [0, 4, 0] }}
-              transition={{ duration: 1.3, repeat: Infinity, ease: "easeInOut" }}
-            >
-              <ArrowRight className="size-4" />
-            </motion.span>
-          </Link>
-        </section>
-      )}
+        </div>
 
-      <section className="overflow-hidden rounded-xl border border-cyan-400/15 bg-[#070d16]/90" aria-label="Simulated global activity">
-        <header className="flex items-center justify-between border-b border-white/8 px-4 py-3">
-          <div className="flex items-center gap-2">
-            <Radio className="size-4 text-cyan-300" />
-            <h2 className="text-xs font-semibold tracking-wide text-white uppercase">Global feed</h2>
-            <span className="rounded border border-cyan-400/20 bg-cyan-400/[0.06] px-1.5 py-0.5 text-[9px] font-medium tracking-wide text-cyan-300 uppercase">
-              Simulated
+        <div className="ml-auto flex flex-col items-end gap-2">
+          <MetricReadout
+            icon={<Zap className="size-3.5" />}
+            label="Network carbon offset"
+            value="1.2 kg"
+            detail="Today · estimated"
+            accent="cyan"
+            align="right"
+          />
+          <MetricReadout
+            icon={<Activity className="size-3.5" />}
+            label="Bengaluru grid"
+            value="Optimal"
+            detail={`${availableCount} developers available`}
+            accent="emerald"
+            align="right"
+          />
+        </div>
+      </header>
+
+      <div className="pointer-events-none absolute bottom-32 left-4 z-10 hidden sm:block sm:left-7">
+        {hoveredNode ? (
+          <div className="max-w-[260px] border-l border-emerald-400/50 bg-black/35 py-1 pl-3 font-mono backdrop-blur-md">
+            <p className="text-[10px] font-semibold tracking-wider text-white uppercase">{hoveredNode.name}</p>
+            <p className="mt-1 text-[9px] text-slate-400">
+              {hoveredNode.skill} <span className="text-slate-600">/</span> {hoveredNode.area}
+            </p>
+            <p className={hoveredNode.available ? "mt-1 text-[9px] text-emerald-300" : "mt-1 text-[9px] text-slate-500"}>
+              {hoveredNode.available ? "AVAILABLE · OPTIMAL GRID" : "BUSY · DIMMED"}
+            </p>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 font-mono text-[9px] tracking-wider text-slate-500 uppercase">
+            <Crosshair className="size-3 text-emerald-400/70" />
+            Drag to orbit <span className="text-slate-700">·</span> Select a node to inspect
+          </div>
+        )}
+      </div>
+
+      <form
+        onSubmit={submitCommand}
+        className="absolute bottom-5 left-1/2 z-20 w-[calc(100%-2rem)] max-w-4xl -translate-x-1/2 sm:bottom-7"
+      >
+        <div className="absolute -inset-px rounded-2xl bg-gradient-to-r from-emerald-400/40 via-cyan-400/30 to-emerald-400/40 opacity-70 blur-sm" />
+        <div className="relative rounded-2xl border border-white/10 bg-[#07100f]/85 shadow-[0_0_45px_rgba(16,185,129,0.12),inset_0_1px_0_rgba(255,255,255,0.07)] backdrop-blur-xl">
+          <div className="flex items-center gap-3 px-3 py-3 sm:gap-4 sm:px-5 sm:py-4">
+            <div className="hidden size-9 shrink-0 place-items-center rounded-lg border border-emerald-400/20 bg-emerald-400/[0.07] text-emerald-300 sm:grid">
+              <Sparkles className="size-4" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <label htmlFor="nexus-command" className="mb-1 flex items-center gap-1.5 font-mono text-[9px] tracking-[0.16em] text-emerald-300/75 uppercase">
+                <Terminal className="size-3" />
+                Gemini command interface
+                <span className="relative ml-1 flex size-1.5">
+                  <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-60" />
+                  <span className="relative inline-flex size-1.5 rounded-full bg-emerald-400" />
+                </span>
+              </label>
+              <input
+                id="nexus-command"
+                value={command}
+                onChange={(event) => setCommand(event.target.value)}
+                placeholder={placeholder}
+                autoComplete="off"
+                disabled={isLoading}
+                className="w-full bg-transparent font-mono text-xs text-white outline-none placeholder:text-slate-500 sm:text-sm"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={!command.trim() || isLoading}
+              aria-label="Run command"
+              className="grid size-9 shrink-0 place-items-center rounded-lg border border-emerald-300/30 bg-emerald-400 text-[#03100b] shadow-[0_0_18px_rgba(16,185,129,0.2)] transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-40 sm:size-10"
+            >
+              {isLoading ? <LoaderCircle className="size-4 animate-spin" /> : <ArrowUp className="size-4" />}
+            </button>
+          </div>
+          <div className="flex min-h-8 flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t border-white/[0.06] px-4 py-2 font-mono text-[9px] text-slate-500 sm:px-5">
+            <span className="flex items-center gap-1.5">
+              <Shield className="size-3 text-emerald-400/70" />
+              {isLoading ? (
+                <span className="animate-pulse text-emerald-300 [text-shadow:0_0_10px_rgba(16,185,129,0.8)]">
+                  GEMINI IS ANALYZING THE NETWORK...
+                </span>
+              ) : commandError ? (
+                <span role="alert" className="text-rose-300">
+                  MATCH FAILED · {commandError}
+                </span>
+              ) : commandResult ? (
+                `AI MATCH · ${commandResult.matches.length} NODE${commandResult.matches.length === 1 ? "" : "S"} · ${commandResult.searchIntent}`
+              ) : (
+                "NEURAL LINK READY · DEVELOPER GRAPH"
+              )}
+            </span>
+            <span className="flex items-center gap-1.5 tracking-wider uppercase">
+              <LocateFixed className="size-3 text-cyan-300/70" />
+              BLR mesh <span className="text-slate-700">/</span> {availableCount} of 50 online
             </span>
           </div>
-          <span className="flex items-center gap-1.5 text-[10px] text-emerald-300">
-            <Activity className="size-3" /> Live Comm-Link
-          </span>
-        </header>
-        <div className="min-h-16 px-4 py-3">
-          <AnimatePresence mode="wait" initial={false}>
-            <motion.ul
-              key={activityIndex}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.25, ease: "easeOut" }}
-              className="space-y-2"
-            >
-              {Array.from({ length: 3 }, (_, offset) => {
-                const eventIndex = (activityIndex + offset) % MOCK_EVENTS.length;
-                return (
-                  <li key={`${activityIndex}-${eventIndex}`} className="flex items-center gap-2 text-xs">
-                    <span className={cn(
-                      "size-1.5 shrink-0 rounded-full",
-                      offset === 0 ? "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" : "bg-slate-600",
-                    )} />
-                    <span className={offset === 0 ? "text-slate-200" : "text-slate-500"}>
-                      {MOCK_EVENTS[eventIndex]}
-                    </span>
-                    <span className="ml-auto shrink-0 font-mono text-[10px] text-slate-600">
-                      {offset === 0 ? "NOW" : `${offset * 2}m`}
-                    </span>
-                  </li>
-                );
-              })}
-            </motion.ul>
-          </AnimatePresence>
         </div>
-      </section>
-    </div>
+
+        {commandResult ? (
+          <div className="mx-auto mt-2 flex w-fit max-w-full flex-wrap justify-center gap-2 rounded-full border border-emerald-400/15 bg-[#07100f]/90 px-3 py-1.5 font-mono text-[9px] text-emerald-100/75 backdrop-blur-xl">
+            {commandResult.matches.length ? (
+              <>
+                {commandResult.matches.slice(0, 3).map((node) => (
+                  <button
+                    key={node.id}
+                    type="button"
+                    onClick={() => selectNode(node)}
+                    className="transition hover:text-emerald-300"
+                  >
+                    {node.name} <span className="text-slate-600">·</span> {node.skill}
+                  </button>
+                ))}
+                {commandResult.matches.length > 3 ? (
+                  <span className="text-slate-500">+{commandResult.matches.length - 3} more</span>
+                ) : null}
+              </>
+            ) : (
+              <span>No developers matched this search.</span>
+            )}
+          </div>
+        ) : null}
+      </form>
+
+      <div className="pointer-events-none absolute bottom-32 right-4 z-10 hidden items-center gap-3 font-mono text-[9px] tracking-wider text-slate-500 uppercase sm:flex sm:right-7">
+        <span className="flex items-center gap-1.5">
+          <span className="size-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,245,189,.8)]" />
+          Available
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="size-1.5 rounded-full bg-slate-600" />
+          Busy
+        </span>
+        <span className="text-slate-700">·</span>
+        <span>Drag / zoom to navigate</span>
+      </div>
+    </section>
   );
 }
 
-function profileCompletion(profile: {
-  name: string;
-  canTeach: string[];
-  wantsToLearn: string[];
-  domains: string[];
+function MetricReadout({
+  icon,
+  label,
+  value,
+  detail,
+  accent,
+  align = "left",
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  detail: string;
+  accent: "emerald" | "cyan";
+  align?: "left" | "right";
 }) {
-  const checks = [
-    profile.name.trim().length > 0,
-    profile.canTeach.length > 0,
-    profile.wantsToLearn.length > 0,
-    profile.domains.length > 0,
-  ];
-  return Math.round((checks.filter(Boolean).length / checks.length) * 100);
+  const color =
+    accent === "emerald"
+      ? "text-emerald-300 border-emerald-400/20"
+      : "text-cyan-300 border-cyan-400/20";
+
+  return (
+    <div className={`min-w-[136px] border-l bg-black/25 px-3 py-2 backdrop-blur-md sm:min-w-[172px] sm:px-4 ${color} ${align === "right" ? "border-r border-l-0 text-right" : ""}`}>
+      <p className={`flex items-center gap-1.5 font-mono text-[8px] tracking-[0.16em] text-slate-500 uppercase sm:text-[9px] ${align === "right" ? "justify-end" : ""}`}>
+        {align === "left" ? icon : null}
+        {label}
+        {align === "right" ? icon : null}
+      </p>
+      <p className={`mt-1 font-mono text-sm font-medium tracking-wide sm:text-base ${accent === "emerald" ? "text-emerald-300" : "text-cyan-200"}`}>
+        {value}
+      </p>
+      <p className="mt-0.5 font-mono text-[8px] text-slate-500 sm:text-[9px]">{detail}</p>
+    </div>
+  );
 }

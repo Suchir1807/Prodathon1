@@ -9,11 +9,14 @@ import {
   ArrowRight,
   ArrowUp,
   Check,
+  Code2,
   Compass,
+  ExternalLink,
   LoaderCircle,
   LocateFixed,
   Network,
   Radio,
+  Sparkles as SparklesIcon,
   Shield,
   Sparkles,
   Terminal,
@@ -22,6 +25,7 @@ import {
 import type { ForceGraphMethods, NodeObject } from "react-force-graph-3d";
 import * as THREE from "three";
 
+import { BuilderMilestones } from "@/components/builder-milestones";
 import { useProfile } from "@/components/profile-provider";
 import { Button } from "@/components/ui/button";
 import { displayName } from "@/lib/profile";
@@ -377,6 +381,56 @@ export function DashboardView() {
             </Button>
           </div>
         </header>
+
+        <BuilderMilestones profile={profile} questCount={quests.length} />
+
+        <section
+          aria-label="How Skillin works"
+          className="mt-6 rounded-2xl border border-white/[0.07] bg-slate-950/45 p-4 backdrop-blur-xl sm:p-5"
+        >
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="text-[10px] font-semibold tracking-[0.16em] text-emerald-200/70 uppercase">
+                The Skillin loop
+              </p>
+              <h2 className="mt-1 text-sm font-semibold text-white">
+                From first hello to something shipped.
+              </h2>
+            </div>
+            <p className="text-xs text-slate-500">
+              {quests.length
+                ? `${quests.length} quest${quests.length === 1 ? "" : "s"} accepted`
+                : "Your first quest starts with a match"}
+            </p>
+          </div>
+          <ol className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {[
+              { label: "Match", href: "/find-partners", icon: UsersRound, detail: "Meet your counterpart" },
+              { label: "Generate a quest", href: "/find-partners", icon: SparklesIcon, detail: "Set a 3-day goal" },
+              { label: "Build together", href: "/workspace", icon: Code2, detail: "Make progress in sync" },
+              { label: "Showcase", href: "/showcase", icon: ExternalLink, detail: "Share what you made" },
+            ].map((step, index) => {
+              const Icon = step.icon;
+              return (
+                <li key={step.label}>
+                  <Link
+                    href={step.href}
+                    className="group flex h-full items-start gap-2.5 rounded-xl border border-white/[0.06] bg-white/[0.025] p-3 transition-colors hover:border-emerald-300/20 hover:bg-emerald-300/[0.04] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-300"
+                  >
+                    <span className="grid size-8 shrink-0 place-items-center rounded-lg border border-emerald-300/15 bg-emerald-300/[0.06] text-emerald-200/80">
+                      <Icon className="size-4" aria-hidden="true" />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block text-[11px] font-medium text-slate-100">{step.label}</span>
+                      <span className="mt-1 block text-[10px] leading-4 text-slate-500">{step.detail}</span>
+                      <span className="sr-only">Step {index + 1} of 4</span>
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ol>
+        </section>
 
         <section
           aria-label="Bengaluru developer network"

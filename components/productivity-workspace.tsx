@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { Braces, Check, ChevronDown, ChevronUp, Clock3, Code2, GripVertical, ListTodo, Loader2, MessageSquare, Plus, Save, Send, Sparkles, X } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useForm } from "react-hook-form";
@@ -467,6 +468,7 @@ export function ProductivityWorkspace({
   const taskMutationRef = useRef(false);
   const taskMutationRevisionRef = useRef(0);
   const completionRequestRef = useRef(false);
+  const taskCelebrationRef = useRef(false);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -494,6 +496,19 @@ export function ProductivityWorkspace({
   const expired = secondsLeft === 0;
   const completedTaskCount = tasks.filter((task) => task.status === "done").length;
   const taskProgress = tasks.length ? Math.round((completedTaskCount / tasks.length) * 100) : 0;
+  const allTasksDone = tasks.length > 0 && completedTaskCount === tasks.length;
+
+  useEffect(() => {
+    if (!allTasksDone) {
+      taskCelebrationRef.current = false;
+      return;
+    }
+    if (taskCelebrationRef.current) return;
+    taskCelebrationRef.current = true;
+    toast.success("Quest milestones complete", {
+      description: "Your shared build is ready for its showcase.",
+    });
+  }, [allTasksDone]);
 
   useEffect(() => {
     if (
@@ -802,6 +817,32 @@ export function ProductivityWorkspace({
       ) : null}
 
       <SprintWarRoom />
+
+      <AnimatePresence>
+        {allTasksDone ? (
+          <motion.section
+            initial={{ opacity: 0, y: 12, scale: 0.985 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.35 }}
+            className="mb-5 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-emerald-300/20 bg-emerald-300/[0.055] px-4 py-4 shadow-[0_0_32px_rgba(16,185,129,0.06)] sm:px-5"
+            role="status"
+          >
+            <div className="flex items-center gap-3">
+              <span className="grid size-10 place-items-center rounded-xl border border-emerald-300/25 bg-emerald-300/10 text-emerald-200">
+                <Check className="size-5" />
+              </span>
+              <div>
+                <p className="text-sm font-semibold text-white">Every task is across the finish line.</p>
+                <p className="mt-1 text-xs text-emerald-100/65">Take a moment to capture what you built together.</p>
+              </div>
+            </div>
+            <Button asChild size="sm" variant="outline">
+              <Link href="/showcase">Create a showcase <Sparkles /></Link>
+            </Button>
+          </motion.section>
+        ) : null}
+      </AnimatePresence>
 
       <div className="mb-5 rounded-xl border border-white/[0.07] bg-white/[0.025] px-4 py-3">
         <div className="mb-2 flex items-center justify-between text-[11px]">

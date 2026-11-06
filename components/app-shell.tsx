@@ -14,6 +14,7 @@ import {
   Repeat2,
   PanelLeftClose,
   PanelLeftOpen,
+  Sparkles,
   Users,
   Zap,
   X,
@@ -23,6 +24,7 @@ import { InvitationsInbox } from "@/components/invitations-inbox";
 import { GlobalUserSearch } from "@/components/global-user-search";
 import { NotificationBell } from "@/components/notification-bell";
 import { UserAvatar } from "@/components/user-avatar";
+import { CommandPalette } from "@/components/command-palette";
 import { useProfile } from "@/components/profile-provider";
 import { unreadTotal } from "@/lib/chats";
 import { displayName } from "@/lib/profile";
@@ -35,6 +37,7 @@ const LINKS = [
   { href: "/messages", label: "Messages", icon: MessageSquare },
   { href: "/trading-floor", label: "Trading Floor", icon: Repeat2 },
   { href: "/sprint", label: "Flash Build", icon: Zap },
+  { href: "/showcase", label: "Showcase", icon: Sparkles },
   { href: "/info", label: "Info", icon: Info },
 ];
 
@@ -46,6 +49,7 @@ const TITLES: Record<string, string> = {
   "/trading-floor": "Trading Floor",
   "/sprint": "12-Hour Flash Build",
   "/info": "How it Works",
+  "/showcase": "Project Showcase",
   "/profile": "Profile",
 };
 
@@ -60,7 +64,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
 
-  const title = TITLES[pathname] ?? "Skillin";
+  const title =
+    TITLES[pathname] ?? (pathname.startsWith("/workspace/") ? "Quest Workspace" : "Skillin");
 
   return (
     <div className="min-h-dvh">
@@ -101,12 +106,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           >
             {open ? <X className="size-4" /> : <Menu className="size-4" />}
           </button>
-          <p className="min-w-0 flex-1 truncate text-sm text-slate-400">
-            Skillin
-            <span className="px-2 text-slate-600">/</span>
-            <span className="text-white">{title}</span>
+          <p className="min-w-0 flex-1 truncate text-sm text-white sm:flex-none">
+            <span className="hidden text-slate-400 sm:inline">
+              Skillin<span className="px-2 text-slate-600">/</span>
+            </span>
+            {title}
           </p>
-          <GlobalUserSearch />
+          <div className="hidden sm:block">
+            <GlobalUserSearch />
+          </div>
+          <CommandPalette />
           <NotificationBell />
           <InvitationsInbox />
         </header>

@@ -160,6 +160,10 @@
   * {
     @apply border-border outline-ring/50;
   }
+  ::selection {
+    background: color-mix(in srgb, var(--signal) 32%, transparent);
+    color: var(--foreground);
+  }
   :focus-visible {
     outline: 2px solid var(--ring);
     outline-offset: 2px;
@@ -167,6 +171,7 @@
   html {
     @apply font-sans;
     color-scheme: light;
+    scroll-behavior: smooth;
   }
   html.dark {
     color-scheme: dark;
@@ -175,11 +180,44 @@
     @apply bg-background text-foreground;
     min-height: 100%;
   }
+  body::after {
+    position: fixed;
+    z-index: 40;
+    inset: 0;
+    pointer-events: none;
+    content: "";
+    opacity: 0.025;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.5'/%3E%3C/svg%3E");
+  }
   h1,
   h2,
   h3 {
     @apply font-heading tracking-[-0.035em];
     color: var(--foreground);
+  }
+}
+
+@layer base {
+  * {
+    scrollbar-color: color-mix(in srgb, var(--signal) 28%, #334155) transparent;
+    scrollbar-width: thin;
+  }
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  *::-webkit-scrollbar-thumb {
+    border: 3px solid transparent;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--signal) 24%, #334155);
+    background-clip: padding-box;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in srgb, var(--signal) 44%, #475569);
+    background-clip: padding-box;
   }
 }
 
@@ -213,6 +251,23 @@
 .glow-card:hover {
   border-color: color-mix(in srgb, var(--signal) 42%, transparent);
   box-shadow: 0 12px 36px color-mix(in srgb, var(--signal) 8%, transparent);
+}
+
+@keyframes aurora-drift {
+  0% {
+    transform: translate3d(-3%, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(3%, 2%, 0) scale(1.05);
+  }
+  100% {
+    transform: translate3d(-3%, 0, 0) scale(1);
+  }
+}
+
+.aurora-drift {
+  animation: aurora-drift 24s ease-in-out infinite;
+  will-change: transform;
 }
 
 .scrollbar-hide {
@@ -331,20 +386,22 @@
   color: #fde68a;
 }
 
-@keyframes quest-status {
-  0% {
-    opacity: 0;
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
   }
-  3% {
-    opacity: 1;
+
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
-  20% {
-    opacity: 1;
-  }
-  23% {
-    opacity: 0;
-  }
-  100% {
-    opacity: 0;
+
+  .aurora-drift {
+    animation: none;
+    will-change: auto;
   }
 }

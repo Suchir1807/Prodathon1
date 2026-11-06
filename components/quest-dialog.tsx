@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useReducedMotion } from "framer-motion";
 import { Check, Sparkles } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -15,31 +16,42 @@ import { displayName } from "@/lib/profile";
 import type { Partner, Profile, Quest, QuestResponse } from "@/lib/types";
 
 const STATUS_LINES = [
-  "Connecting neural pathways...",
-  "Reading both skill graphs...",
-  "Drafting Mission Control board...",
-  "Splitting frontend and backend tracks...",
-  "Sealing the hour-36 curveball...",
+  "Analyzing both skill graphs",
+  "Finding the overlap worth building",
+  "Designing a three-day challenge",
+  "Setting milestones and success criteria",
 ];
 
 function QuestLoading() {
+  const reduceMotion = useReducedMotion();
+  const [activeStep, setActiveStep] = useState(0);
+
+  useEffect(() => {
+    if (reduceMotion) return;
+    const timer = window.setInterval(
+      () => setActiveStep((step) => (step + 1) % STATUS_LINES.length),
+      1900,
+    );
+    return () => window.clearInterval(timer);
+  }, [reduceMotion]);
+
   return (
-    <div className="flex flex-col items-center px-6 py-14 text-center" aria-busy="true">
+    <div className="flex flex-col items-center px-6 py-14 text-center" aria-busy="true" role="status" aria-live="polite">
       <div className="relative size-28">
-        <span className="absolute inset-0 animate-ping rounded-full border border-primary/40" />
-        <span className="absolute inset-2 animate-spin rounded-full border border-primary/60 [animation-duration:3s]" />
-        <span className="absolute inset-5 animate-spin rounded-full border-2 border-dashed border-violet-400/80 [animation-direction:reverse] [animation-duration:6s]" />
+        <span className="absolute inset-0 rounded-full border border-primary/40 motion-safe:animate-ping" />
+        <span className="absolute inset-2 rounded-full border border-primary/60 motion-safe:animate-spin motion-safe:[animation-duration:3s]" />
+        <span className="absolute inset-5 rounded-full border-2 border-dashed border-violet-400/80 motion-safe:animate-spin motion-safe:[animation-direction:reverse] motion-safe:[animation-duration:6s]" />
         <Sparkles className="absolute inset-0 m-auto size-7 text-primary" />
       </div>
-      <div className="relative mt-8 h-6 w-full">
+      <p className="mt-8 font-mono text-sm text-primary" aria-live="polite">
+        {STATUS_LINES[activeStep]}…
+      </p>
+      <div className="mt-5 flex items-center gap-2" aria-label={`Generation step ${activeStep + 1} of ${STATUS_LINES.length}`}>
         {STATUS_LINES.map((line, index) => (
-          <p
+          <span
             key={line}
-            className="absolute inset-x-0 font-mono text-sm text-primary opacity-0"
-            style={{ animation: `quest-status 7s ${index * 1.4}s infinite` }}
-          >
-            {line}
-          </p>
+            className={`h-1 rounded-full transition-all duration-500 ${index <= activeStep ? "w-8 bg-primary" : "w-4 bg-white/10"}`}
+          />
         ))}
       </div>
       <p className="mt-6 max-w-sm text-xs text-muted-foreground">

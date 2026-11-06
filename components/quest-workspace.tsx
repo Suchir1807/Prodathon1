@@ -1,11 +1,13 @@
 "use client";
 
-import { useMemo, useState, useSyncExternalStore } from "react";
-import { Bot, Check, Circle, Rocket, Send, Sparkles } from "lucide-react";
+import { useMemo, useSyncExternalStore } from "react";
+import { Check, Circle, MessageSquare, Rocket, Sparkles } from "lucide-react";
+import { motion } from "framer-motion";
+import Link from "next/link";
+import { toast } from "sonner";
 
 import { useIsClient } from "@/components/profile-provider";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { missionApiSnippet } from "@/lib/mission";
 import type { ActiveMissionWorkspace } from "@/lib/workspace";
 import {
@@ -13,6 +15,7 @@ import {
   getWorkspaceSnapshot,
   readActiveWorkspace,
   subscribeWorkspace,
+  writeActiveWorkspace,
 } from "@/lib/workspace";
 import { cn } from "@/lib/utils";
 
@@ -38,17 +41,18 @@ function workspaceFromSnapshot(snapshot: string): ActiveMissionWorkspace | null 
 }
 
 function tasksFromMission(mission: ActiveMissionWorkspace): WorkspaceTask[] {
+  const completed = new Set(mission.completedTaskIds ?? []);
   const a = mission.kanbanTasksStudentA.map((title, index) => ({
     id: `a-${index}`,
     title,
     owner: "a" as const,
-    column: "todo" as const,
+    column: (completed.has(`a-${index}`) ? "done" : "todo") as "todo" | "done",
   }));
   const b = mission.kanbanTasksStudentB.map((title, index) => ({
     id: `b-${index}`,
     title,
     owner: "b" as const,
-    column: "todo" as const,
+    column: (completed.has(`b-${index}`) ? "done" : "todo") as "todo" | "done",
   }));
   return [...a, ...b];
 }
@@ -145,10 +149,9 @@ export function QuestWorkspace() {
     () => "00:00:00",
   );
 
-  const [draft, setDraft] = useState("");
   const tasks = useMemo(() => (mission ? tasksFromMission(mission) : []), [mission]);
   const apiSnippet = useMemo(() => (mission ? missionApiSnippet(mission) : ""), [mission]);
-  const mentorLine = mission ? `Curveball queued for hour 36: ${mission.plannedCurveball}` : "";
+  const mentorLine = mission?.plannedCurveball ?? "";
 
   if (!mission) return null;
 
@@ -156,8 +159,30 @@ export function QuestWorkspace() {
 
   const todo = tasks.filter((t) => t.column === "todo");
   const done = tasks.filter((t) => t.column === "done");
+  const allTasksDone = tasks.length > 0 && done.length === tasks.length;
   const currentDay = getQuestDayIndex(activeMission.acceptedAt);
   const progress = getQuestProgress(activeMission.acceptedAt);
+
+  function toggleTask(taskId: string) {
+    const completed = new Set(activeMission.completedTaskIds ?? []);
+    const isComplete = completed.has(taskId);
+    if (isComplete) completed.delete(taskId);
+    else completed.add(taskId);
+    writeActiveWorkspace({ ...activeMission, completedTaskIds: [...completed] });
+    if (!isComplete) {
+      toast.success(
+        completed.size === tasks.length && tasks.length > 0
+          ? "Every quest task is complete"
+          : "Task marked complete",
+        {
+          description:
+            completed.size === tasks.length && tasks.length > 0
+              ? "Your build is ready for its showcase."
+              : "A little progress, made together.",
+        },
+      );
+    }
+  }
 
   return (
     <div className="relative flex h-[calc(100dvh-3.5rem)] flex-col overflow-hidden bg-[#07110c] text-white">
@@ -186,13 +211,12 @@ export function QuestWorkspace() {
               {remaining}
             </p>
           </div>
-          <Button
-            type="button"
-            className="h-10 shrink-0 px-3.5 text-xs font-semibold sm:px-4 sm:text-sm"
-          >
-            <Rocket />
-            <span className="hidden sm:inline">Ship project</span>
-            <span className="sm:hidden">Ship</span>
+          <Button asChild className="h-10 shrink-0 px-3.5 text-xs font-semibold sm:px-4 sm:text-sm">
+            <Link href="/showcase">
+              <Rocket />
+              <span className="hidden sm:inline">Build showcase</span>
+              <span className="sm:hidden">Showcase</span>
+            </Link>
           </Button>
         </div>
       </header>
@@ -225,6 +249,23 @@ export function QuestWorkspace() {
         </div>
       </div>
 
+      {allTasksDone ? (
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mx-3 mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-300/20 bg-emerald-300/[0.06] px-4 py-3 md:mx-4"
+          role="status"
+        >
+          <p className="flex items-center gap-2 text-xs font-medium text-emerald-100">
+            <Check className="size-4" />
+            Your quest board is complete. Capture the story you built together.
+          </p>
+          <Button asChild size="sm" variant="outline">
+            <Link href="/showcase">Create a showcase <Sparkles /></Link>
+          </Button>
+        </motion.div>
+      ) : null}
+
       <div className="scrollbar-hide grid min-h-0 flex-1 grid-cols-1 gap-3 overflow-y-auto p-3 md:grid-cols-3 md:overflow-hidden md:p-4 lg:gap-4">
         <section className={cn(PANEL, "min-h-[320px] md:min-h-0")}>
           <div className="border-b border-white/8 px-4 py-3.5">
@@ -233,8 +274,8 @@ export function QuestWorkspace() {
             <p className="text-[11px] text-slate-500">A first-pass list to help you get moving.</p>
           </div>
           <div className="grid min-h-0 flex-1 grid-cols-2 gap-2 p-3">
-            <KanbanColumn title="To Do" count={todo.length} tasks={todo} />
-            <KanbanColumn title="Done" count={done.length} tasks={done} accent="done" />
+            <KanbanColumn title="To Do" count={todo.length} tasks={todo} onToggle={toggleTask} />
+            <KanbanColumn title="Done" count={done.length} tasks={done} accent="done" onToggle={toggleTask} />
           </div>
         </section>
 
@@ -264,16 +305,16 @@ export function QuestWorkspace() {
         <section className={cn(PANEL, "min-h-[320px] border-emerald-300/15 md:min-h-0")}>
           <div className="border-b border-white/8 px-4 py-3.5">
             <p className="text-[9px] font-semibold tracking-[0.16em] text-signal/70 uppercase">03 · Get unstuck</p>
-            <h2 className="mt-1 text-sm font-semibold text-white">AI co-pilot</h2>
-            <p className="text-[11px] text-slate-500">A thought partner for the hard parts</p>
+            <h2 className="mt-1 text-sm font-semibold text-white">Mission guide</h2>
+            <p className="text-[11px] text-slate-500">A prompt to get your next conversation moving</p>
           </div>
           <div className="scrollbar-hide min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-3">
             <div className="flex gap-3 rounded-xl border border-signal/20 bg-gradient-to-r from-emerald-900/25 to-transparent p-3">
               <span className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-signal/30 bg-signal/[0.08] text-signal">
-                <Bot className="size-4" />
+                <Sparkles className="size-4" />
               </span>
               <div className="min-w-0">
-                <p className="text-[10px] font-medium tracking-wide text-signal uppercase">AI Mentor</p>
+                <p className="text-[10px] font-medium tracking-wide text-signal uppercase">Hour-36 curveball</p>
                 <p className="mt-1 text-sm leading-relaxed text-slate-200">{mentorLine}</p>
               </div>
             </div>
@@ -282,26 +323,14 @@ export function QuestWorkspace() {
               <p className="mt-1 leading-relaxed">{activeMission.apiContractHint}</p>
             </div>
           </div>
-          <form
-            className="border-t border-white/8 p-3"
-            onSubmit={(event) => {
-              event.preventDefault();
-              setDraft("");
-            }}
-          >
-            <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-slate-950/70 px-2 py-1">
-              <Input
-                value={draft}
-                onChange={(event) => setDraft(event.target.value)}
-                placeholder="Ask the co-pilot or @mention your partner"
-                aria-label="Message AI co-pilot"
-                className="h-8 border-0 bg-transparent text-sm shadow-none focus-visible:ring-0"
-              />
-              <Button type="submit" size="icon-sm" className="rounded-full" disabled={!draft.trim()} aria-label="Send">
-                <Send className="size-3.5" />
-              </Button>
-            </div>
-          </form>
+          <div className="border-t border-white/8 p-3">
+            <Button asChild variant="outline" className="w-full">
+              <Link href="/messages">
+                <MessageSquare />
+                Open partner messages
+              </Link>
+            </Button>
+          </div>
         </section>
       </div>
     </div>
@@ -313,11 +342,13 @@ function KanbanColumn({
   count,
   tasks,
   accent,
+  onToggle,
 }: {
   title: string;
   count: number;
   tasks: WorkspaceTask[];
   accent?: "done";
+  onToggle: (taskId: string) => void;
 }) {
   return (
     <div
@@ -336,19 +367,30 @@ function KanbanColumn({
             key={task.id}
             className={cn("rounded-lg border border-white/[0.06] p-2.5", taskCardStyles(task.owner))}
           >
-            <div className="flex items-start gap-2">
-              <div className="min-w-0">
-                <p
+            <button
+              type="button"
+              onClick={() => onToggle(task.id)}
+              aria-pressed={task.column === "done"}
+              aria-label={`${task.column === "done" ? "Mark incomplete" : "Mark complete"}: ${task.title}`}
+              className="flex w-full items-start gap-2 text-left focus-visible:rounded-md"
+            >
+              <span className={cn("mt-0.5 shrink-0", task.column === "done" ? "text-emerald-200" : "text-slate-500")}>
+                {task.column === "done" ? <Check className="size-3.5" /> : <Circle className="size-3.5" />}
+              </span>
+              <span className="min-w-0">
+                <span
                   className={cn(
-                    "text-[10px] font-medium",
+                    "block text-[10px] font-medium",
                     task.owner === "a" ? "text-emerald-200/90" : "text-sky-200/90",
                   )}
                 >
                   {ownerLabel(task.owner)}
-                </p>
-                <p className="mt-0.5 text-xs text-white">{task.title}</p>
-              </div>
-            </div>
+                </span>
+                <span className={cn("mt-0.5 block text-xs text-white", task.column === "done" && "text-slate-400 line-through")}>
+                  {task.title}
+                </span>
+              </span>
+            </button>
           </li>
         ))}
       </ul>

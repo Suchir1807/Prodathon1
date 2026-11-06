@@ -45,7 +45,7 @@ export function AuthCard({
         <aside className="relative isolate flex min-h-[350px] flex-col overflow-hidden bg-forest-950 px-6 py-6 text-white sm:px-10 sm:py-9 lg:min-h-dvh lg:px-14 lg:py-12">
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_18%_82%,rgba(16,185,129,0.18),transparent_42%),radial-gradient(ellipse_at_82%_16%,rgba(217,243,106,0.10),transparent_34%)]"
+            className="aurora-drift pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_18%_82%,rgba(16,185,129,0.18),transparent_42%),radial-gradient(ellipse_at_82%_16%,rgba(217,243,106,0.10),transparent_34%)]"
           />
           <div
             aria-hidden="true"

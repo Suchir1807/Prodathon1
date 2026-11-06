@@ -150,6 +150,7 @@ export function LiveIdCard({
   saved,
   submitLabel,
   isOnboarding,
+  showSubmit = true,
 }: {
   username: string;
   live: ProfileLiveState;
@@ -159,6 +160,7 @@ export function LiveIdCard({
   saved: boolean;
   submitLabel: string;
   isOnboarding: boolean;
+  showSubmit?: boolean;
 }) {
   const previewProfile = {
     name: live.displayName,
@@ -202,21 +204,25 @@ export function LiveIdCard({
         <PreviewSkills label="Wants to learn" skills={live.skillsLearn} />
       </div>
 
-      <Button
-        type="submit"
-        loading={saving}
-        className={cn(
-          "mt-6 h-12 w-full border-transparent bg-[#ccff00] text-base font-semibold text-[#0a0f1c]",
-          "hover:border-transparent hover:bg-[#d6ff4a] hover:text-[#0a0f1c] hover:shadow-[0_0_18px_rgba(204,255,0,0.55)]",
-        )}
-      >
-        {!saving && saved && !isOnboarding ? <Check /> : null}
-        {saving ? "Saving..." : submitLabel}
-      </Button>
+      {showSubmit ? (
+        <Button
+          type="submit"
+          loading={saving}
+          className={cn(
+            "mt-6 h-12 w-full border-transparent bg-[#ccff00] text-base font-semibold text-[#0a0f1c]",
+            "hover:border-transparent hover:bg-[#d6ff4a] hover:text-[#0a0f1c] hover:shadow-[0_0_18px_rgba(204,255,0,0.55)]",
+          )}
+        >
+          {!saving && saved && !isOnboarding ? <Check /> : null}
+          {saving ? "Saving..." : submitLabel}
+        </Button>
+      ) : null}
       <p className="mt-3 text-center text-[11px] text-slate-500">
         {isOnboarding
-          ? "Updates as you type. Nothing is published until you initialize."
-          : "Updates as you type. Save when you are ready."}
+          ? "Your preview updates as you make each choice."
+          : showSubmit
+            ? "Updates as you type. Save when you are ready."
+            : "Your profile preview updates as you make each choice."}
       </p>
     </div>
   );

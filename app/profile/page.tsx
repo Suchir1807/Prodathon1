@@ -8,6 +8,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 
 import { ProfileLogoutButton } from "@/components/profile-logout-button";
 import { ProfileSkeleton } from "@/components/ui/loading-skeletons";
+import { BuilderMilestones } from "@/components/builder-milestones";
 import { ToggleChip } from "@/components/toggle-chip";
 import { UserAvatar } from "@/components/user-avatar";
 import {
@@ -101,7 +102,7 @@ function IdList({ label, skills }: { label: string; skills: string[] }) {
 
 export default function ProfilePage() {
   const { data: session, update: updateSession } = useSession();
-  const { saveProfile } = useProfile();
+  const { saveProfile, quests } = useProfile();
   const username = session?.user?.name ?? "";
 
   const [displayName, setDisplayName] = useState("");
@@ -421,6 +422,12 @@ export default function ProfilePage() {
           </div>
         </aside>
       </form>
+      <div className="mx-auto w-full max-w-6xl px-4 md:px-6">
+        <BuilderMilestones
+          profile={{ name: displayName, canTeach: skillsHave, wantsToLearn: skillsLearn, domains: domainInterests }}
+          questCount={quests.length}
+        />
+      </div>
       <ProfileLogoutButton />
     </>
   );

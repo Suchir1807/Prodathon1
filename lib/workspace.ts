@@ -3,6 +3,7 @@ import type { GeminiMission } from "@/lib/mission";
 export type ActiveMissionWorkspace = GeminiMission & {
   partnerName: string;
   acceptedAt: string;
+  completedTaskIds?: string[];
 };
 
 const WORKSPACE_KEY = "skillin.workspace";

@@ -51,7 +51,7 @@ export function LandingPage() {
   return (
     <div className="relative isolate min-h-dvh overflow-hidden bg-[#07110c] text-white">
       <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-        <div className="absolute -top-56 left-[52%] size-[min(90vw,900px)] -translate-x-1/2 rounded-full bg-emerald-500/[0.12] blur-[140px]" />
+        <div className="aurora-drift absolute -top-56 left-[52%] size-[min(90vw,900px)] -translate-x-1/2 rounded-full bg-emerald-500/[0.12] blur-[140px]" />
         <div className="absolute right-[-18rem] top-[48rem] size-[36rem] rounded-full bg-lime-300/[0.05] blur-[120px]" />
         <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(217,243,106,0.035)_1px,transparent_1px),linear-gradient(to_bottom,rgba(217,243,106,0.035)_1px,transparent_1px)] bg-[size:56px_56px] [mask-image:radial-gradient(ellipse_at_top,black,transparent_78%)]" />
       </div>

@@ -145,8 +145,8 @@ export function OnboardingForm() {
       const persisted = data.localProfile ?? apiToProfile(data);
       saveProfile(persisted);
       await updateSession({ isProfileComplete: true });
-      setToast("Profile initialized — opening workspace…");
-      window.setTimeout(() => router.push("/workspace"), 700);
+      setToast("Profile ready — finding your first collaborator…");
+      window.setTimeout(() => router.push("/find-partners"), 700);
     } catch {
       setToast("Network error. Try again.");
     } finally {
@@ -181,7 +181,7 @@ export function OnboardingForm() {
       saving={saving}
       saved={false}
       toast={toast}
-      submitLabel="Initialize profile"
+      submitLabel="Save profile & find partners"
       onSubmit={handleSubmit}
     />
   );

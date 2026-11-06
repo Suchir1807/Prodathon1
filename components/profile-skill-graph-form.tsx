@@ -1,7 +1,7 @@
 "use client";
 
-import { Sparkles } from "lucide-react";
-import { useRef } from "react";
+import { ArrowLeft, ArrowRight, Check, Sparkles } from "lucide-react";
+import { useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
@@ -88,6 +88,7 @@ export function ProfileSkillGraphForm({
   const live = liveStateFromDraft(draft);
   const previewName = displayName(draft, username);
   const isOnboarding = mode === "onboarding";
+  const [onboardingStep, setOnboardingStep] = useState(0);
   const submissionRef = useRef(false);
   const {
     register,
@@ -105,6 +106,11 @@ export function ProfileSkillGraphForm({
   }
 
   function submitForm(event: React.FormEvent<HTMLFormElement>) {
+    if (isOnboarding && onboardingStep < 2) {
+      event.preventDefault();
+      setOnboardingStep((step) => step + 1);
+      return;
+    }
     if (submissionRef.current) return;
     submissionRef.current = true;
     void handleSubmit(onSubmit)(event).finally(() => {
@@ -155,9 +161,32 @@ export function ProfileSkillGraphForm({
               ? " The card on the right is how partners will see you."
               : " Update what you teach, want to learn, and the domains you care about."}
           </p>
+          {isOnboarding ? (
+            <ol className="mt-6 grid max-w-2xl grid-cols-3 gap-2" aria-label="Profile setup progress">
+              {["Pick skills", "Set goals", "Meet your match"].map((label, index) => {
+                const complete = index < onboardingStep;
+                const current = index === onboardingStep;
+                return (
+                  <li
+                    key={label}
+                    aria-current={current ? "step" : undefined}
+                    className={cn(
+                      "flex min-w-0 items-center gap-2 border-t-2 pt-2 text-[10px] sm:text-xs",
+                      complete || current ? "border-emerald-300 text-emerald-100" : "border-white/10 text-slate-500",
+                    )}
+                  >
+                    <span className="grid size-5 shrink-0 place-items-center rounded-full border border-current text-[9px]">
+                      {complete ? <Check className="size-3" /> : index + 1}
+                    </span>
+                    <span className="truncate">{label}</span>
+                  </li>
+                );
+              })}
+            </ol>
+          ) : null}
         </div>
 
-        <section className="glass rounded-xl p-5">
+        {(!isOnboarding || onboardingStep === 0) ? <section className="glass rounded-xl p-5">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
             <UserAvatar name={previewName} className="size-24 border border-[#ccff00]/70 text-lg" />
             <div className="min-w-0 flex-1 space-y-2">
@@ -202,9 +231,9 @@ export function ProfileSkillGraphForm({
               ) : null}
             </div>
           </div>
-        </section>
+        </section> : null}
 
-        <SkillSection
+        {(!isOnboarding || onboardingStep === 0) ? <SkillSection
           title="Skills I Have"
           description="What you can teach a partner this week."
           options={SKILLS_I_HAVE}
@@ -214,8 +243,8 @@ export function ProfileSkillGraphForm({
             onDraftChange({ canTeach: next });
             setSkills("skillsHave", next);
           }}
-        />
-        <SkillSection
+        /> : null}
+        {(!isOnboarding || onboardingStep === 1) ? <SkillSection
           title="Skills I Want to Learn"
           description="What you want the quest to make you practice."
           options={SKILLS_I_WANT}
@@ -225,8 +254,8 @@ export function ProfileSkillGraphForm({
             onDraftChange({ wantsToLearn: next });
             setSkills("skillsLearn", next);
           }}
-        />
-        <SkillSection
+        /> : null}
+        {(!isOnboarding || onboardingStep === 1) ? <SkillSection
           title="Domain Interests"
           description="The kinds of products you actually want to build."
           options={DOMAIN_INTERESTS}
@@ -236,7 +265,57 @@ export function ProfileSkillGraphForm({
             onDraftChange({ domains: next });
             setSkills("domainInterests", next);
           }}
-        />
+        /> : null}
+
+        {isOnboarding && onboardingStep === 2 ? (
+          <section className="glass rounded-2xl p-6 sm:p-8">
+            <span className="grid size-11 place-items-center rounded-xl border border-emerald-300/20 bg-emerald-300/[0.08] text-emerald-200">
+              <Sparkles className="size-5" />
+            </span>
+            <h2 className="mt-5 font-heading text-2xl font-semibold tracking-tight text-white">
+              Your next collaborator is one step away.
+            </h2>
+            <p className="mt-2 max-w-lg text-sm leading-6 text-slate-400">
+              We’ll use your teaching skills, learning goals, and interests to help you find a thoughtful match.
+            </p>
+            <div className="mt-6 grid gap-4 sm:grid-cols-2">
+              <div>
+                <p className="text-[10px] font-medium tracking-wide text-emerald-200/70 uppercase">You can teach</p>
+                <p className="mt-2 text-sm text-white">
+                  {live.skillsHave.length ? live.skillsHave.join(" · ") : "Add skills later from your profile"}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] font-medium tracking-wide text-sky-200/70 uppercase">You want to learn</p>
+                <p className="mt-2 text-sm text-white">
+                  {live.skillsLearn.length ? live.skillsLearn.join(" · ") : "Add learning goals later from your profile"}
+                </p>
+              </div>
+            </div>
+          </section>
+        ) : null}
+
+        {isOnboarding ? (
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            {onboardingStep > 0 ? (
+              <Button type="button" variant="ghost" onClick={() => setOnboardingStep((step) => step - 1)}>
+                <ArrowLeft />
+                Back
+              </Button>
+            ) : <span />}
+            {onboardingStep < 2 ? (
+              <Button type="button" onClick={() => setOnboardingStep((step) => step + 1)}>
+                {onboardingStep === 0 ? "Set your goals" : "Find your first match"}
+                <ArrowRight />
+              </Button>
+            ) : (
+              <Button type="submit" loading={saving || isSubmitting} disabled={saving || isSubmitting}>
+                <Sparkles />
+                {submitLabel}
+              </Button>
+            )}
+          </div>
+        ) : null}
       </div>
 
       <aside className="lg:col-span-1">
@@ -249,6 +328,7 @@ export function ProfileSkillGraphForm({
           saved={saved}
           submitLabel={submitLabel}
           isOnboarding={isOnboarding}
+          showSubmit={!isOnboarding}
         />
       </aside>
     </form>

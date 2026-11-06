@@ -6,11 +6,10 @@ import { useReducedMotion } from "framer-motion";
 import {
   Activity,
   ArrowUp,
-  Crosshair,
   LoaderCircle,
   LocateFixed,
+  Network,
   Radio,
-  ScanLine,
   Shield,
   Sparkles,
   Terminal,
@@ -74,7 +73,7 @@ const BENGALURU_AREAS = [
   "Malleshwaram", "MG Road", "Bellandur", "Electronic City", "Hebbal",
 ];
 
-const PLACEHOLDER = "Initialize Gemini... Type 'Find a Next.js dev on a green grid'...";
+const COMMAND_PLACEHOLDER = "Find a developer by skill, location, or experience";
 
 const DEVELOPERS: DeveloperGraph = (() => {
   const nodes = DEVELOPER_NAMES.map((name, index) => {
@@ -94,10 +93,28 @@ const DEVELOPERS: DeveloperGraph = (() => {
     };
   });
 
-  const links = nodes.flatMap((node, index) => [
-    { source: node.id, target: nodes[(index + 1) % nodes.length].id, value: 1 },
-    { source: node.id, target: nodes[(index + 7) % nodes.length].id, value: 1 },
-  ]);
+  const links: DeveloperLink[] = [];
+  const connectedPairs = new Set<string>();
+
+  nodes.forEach((node, index) => {
+    const connectionCount = 2 + Math.floor(Math.random() * 2);
+    const targets = new Set<number>();
+
+    while (targets.size < connectionCount) {
+      const targetIndex = Math.floor(Math.random() * nodes.length);
+      if (targetIndex === index) continue;
+
+      const pairKey = [index, targetIndex].sort((a, b) => a - b).join(":");
+      if (connectedPairs.has(pairKey)) continue;
+
+      connectedPairs.add(pairKey);
+      targets.add(targetIndex);
+    }
+
+    targets.forEach((targetIndex) => {
+      links.push({ source: node.id, target: nodes[targetIndex].id, value: 1 });
+    });
+  });
 
   return { nodes, links };
 })();
@@ -106,19 +123,16 @@ export function DashboardView() {
   const shouldReduceMotion = useReducedMotion();
   const graphRef = useRef<ForceGraphMethods | undefined>(undefined);
   const graphContainerRef = useRef<HTMLDivElement>(null);
-  const rotatingRingsRef = useRef<THREE.Object3D[]>([]);
   const nodeVisualsRef = useRef(
     new Map<
       string,
       {
         node: DeveloperNode;
         coreMaterial: THREE.MeshBasicMaterial;
-        haloMaterial?: THREE.MeshBasicMaterial;
       }
     >(),
   );
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
-  const [placeholder, setPlaceholder] = useState("");
   const [command, setCommand] = useState("");
   const [commandResult, setCommandResult] = useState<{
     query: string;
@@ -152,43 +166,13 @@ export function DashboardView() {
   }, []);
 
   useEffect(() => {
-    if (shouldReduceMotion) return;
-
-    let frame = 0;
-    const rotateRings = () => {
-      for (const ring of rotatingRingsRef.current) {
-        ring.rotation.z += 0.006;
-        ring.rotation.x += 0.0015;
-      }
-      frame = window.requestAnimationFrame(rotateRings);
-    };
-
-    frame = window.requestAnimationFrame(rotateRings);
-    return () => {
-      window.cancelAnimationFrame(frame);
-      rotatingRingsRef.current = [];
-    };
-  }, [shouldReduceMotion]);
-
-  useEffect(() => {
-    for (const { node, coreMaterial, haloMaterial } of nodeVisualsRef.current.values()) {
+    for (const { node, coreMaterial } of nodeVisualsRef.current.values()) {
       const isMatch = matchedNodeIds.has(node.id);
-      const color = commandResult
-        ? isMatch
-          ? "#10b981"
-          : "#1f2937"
-        : node.available
-          ? "#10b981"
-          : "#52636a";
+      const color = node.available ? "#10b981" : "#333333";
 
       coreMaterial.color.set(color);
-      coreMaterial.opacity =
-        commandResult && !isMatch ? 0.8 : node.available || isMatch ? 1 : 0.56;
-      coreMaterial.transparent = commandResult ? !isMatch : !node.available;
-      if (haloMaterial) {
-        haloMaterial.opacity =
-          commandResult ? (isMatch ? 0.72 : 0.04) : node.available ? 0.62 : 0;
-      }
+      coreMaterial.opacity = commandResult && !isMatch ? 0.65 : 1;
+      coreMaterial.transparent = true;
     }
   }, [commandResult, matchedNodeIds]);
 
@@ -216,65 +200,34 @@ export function DashboardView() {
     }
   }, [commandResult, shouldReduceMotion]);
 
-  useEffect(() => {
-    let character = 0;
-    let timeout: number;
-    let interval: number;
-
-    const typePlaceholder = () => {
-      setPlaceholder(PLACEHOLDER.slice(0, character + 1));
-      character += 1;
-      if (character < PLACEHOLDER.length) {
-        timeout = window.setTimeout(typePlaceholder, 32);
-      } else {
-        timeout = window.setTimeout(() => {
-          setPlaceholder("");
-          character = 0;
-          interval = window.setTimeout(typePlaceholder, 550);
-        }, 1700);
-      }
-    };
-
-    timeout = window.setTimeout(typePlaceholder, 450);
-    return () => {
-      window.clearTimeout(timeout);
-      window.clearTimeout(interval);
-    };
-  }, []);
-
   const createNodeObject = useCallback((graphNode: NodeObject) => {
     const node = graphNode as DeveloperNode;
     const group = new THREE.Group();
     const core = new THREE.Mesh(
-      new THREE.SphereGeometry(node.available ? 2.8 : 2.2, 14, 14),
+      new THREE.SphereGeometry(node.available ? 3.2 : 2.6, 14, 14),
       new THREE.MeshBasicMaterial({
-        color: node.available ? 0x10b981 : 0x52636a,
-        transparent: !node.available,
-        opacity: node.available ? 1 : 0.56,
+        color: node.available ? 0x10b981 : 0x333333,
+        transparent: true,
+        opacity: 1,
       }),
     );
     group.add(core);
 
-    let haloMaterial: THREE.MeshBasicMaterial | undefined;
-    if (node.available) {
-      haloMaterial = new THREE.MeshBasicMaterial({
-        color: 0x34f5bd,
+    const glow = new THREE.Mesh(
+      new THREE.SphereGeometry(node.available ? 5.2 : 4.2, 14, 14),
+      new THREE.MeshBasicMaterial({
+        color: node.available ? 0x10b981 : 0x333333,
         transparent: true,
-        opacity: 0.62,
-      });
-      const halo = new THREE.Mesh(
-        new THREE.TorusGeometry(4.2, 0.22, 6, 28),
-        haloMaterial,
-      );
-      halo.rotation.x = Math.PI / 2.5;
-      group.add(halo);
-      rotatingRingsRef.current.push(halo);
-    }
+        opacity: node.available ? 0.14 : 0.08,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      }),
+    );
+    group.add(glow);
 
     nodeVisualsRef.current.set(node.id, {
       node,
       coreMaterial: core.material,
-      haloMaterial,
     });
     return group;
   }, []);
@@ -364,8 +317,28 @@ export function DashboardView() {
   return (
     <section
       aria-label="Neural Nexus developer network"
-      className="relative isolate h-[calc(100dvh-3.5rem)] min-h-[520px] overflow-hidden bg-[#030807] text-white"
+      className="relative isolate h-[calc(100dvh-3.5rem)] min-h-[520px] overflow-hidden bg-[#020617] text-white"
     >
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-emerald-900/20 via-[#020617]/80 to-[#020617]"
+      />
+      <div
+        aria-hidden="true"
+        className="tactical-grid-mask pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,#10b9810a_1px,transparent_1px),linear-gradient(to_bottom,#10b9810a_1px,transparent_1px)] bg-[size:40px_40px]"
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute left-1/2 top-1/2 aspect-square w-[min(86vw,76rem)] -translate-x-1/2 -translate-y-1/2 rounded-full border border-dashed border-emerald-500/10 animate-[spin_60s_linear_infinite]"
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute left-1/2 top-1/2 aspect-square w-[min(66vw,58rem)] -translate-x-1/2 -translate-y-1/2 rounded-full border border-emerald-500/10"
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute left-1/2 top-1/2 aspect-square w-[min(44vw,38rem)] -translate-x-1/2 -translate-y-1/2 rounded-full border border-emerald-500/10"
+      />
       <div
         ref={graphContainerRef}
         className="absolute inset-0"
@@ -377,30 +350,18 @@ export function DashboardView() {
             graphData={graphData}
             width={dimensions.width}
             height={dimensions.height}
-            backgroundColor="#030807"
+            backgroundColor="rgba(2, 6, 23, 0)"
             showNavInfo={false}
             nodeRelSize={4}
             nodeThreeObject={createNodeObject}
             nodeThreeObjectExtend={false}
             nodeLabel={(node) =>
-              `<div style="padding:8px 10px;background:rgba(3,8,7,.94);border:1px solid rgba(16,185,129,.45);border-radius:8px;color:#e5fff4;font:12px ui-monospace,monospace"><strong>${node.name}</strong><br/>${node.skill} · ${node.area}<br/><span style="color:${node.available ? "#34f5bd" : "#849096"}">${node.available ? "AVAILABLE · LOW-CARBON GRID" : "BUSY · HIGH-CARBON GRID"}</span></div>`
+              `<div style="padding:8px 10px;background:rgba(9,9,11,.96);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:#fafafa;font:12px ui-sans-serif,system-ui,sans-serif"><strong>${node.name}</strong><br/><span style="color:#a1a1aa">${node.skill} · ${node.area}</span><br/><span style="color:${node.available ? "#6ee7b7" : "#a1a1aa"}">${node.available ? "Available" : "Busy"}</span></div>`
             }
-            nodeColor={(node) =>
-              commandResult
-                ? matchedNodeIds.has(node.id as string)
-                  ? "#10b981"
-                  : "#1f2937"
-                : node.available
-                  ? "#10b981"
-                  : "#52636a"
-            }
-            linkColor={() => "rgba(16,185,129,0.22)"}
-            linkOpacity={0.25}
-            linkWidth={0.35}
-            linkDirectionalParticles={1}
-            linkDirectionalParticleWidth={1.2}
-            linkDirectionalParticleSpeed={0.002}
-            linkDirectionalParticleColor={() => "#34f5bd"}
+            nodeColor={(node) => (node.available ? "#10b981" : "#333333")}
+            linkColor={() => "rgba(255, 255, 255, 0.15)"}
+            linkOpacity={0.35}
+            linkWidth={1}
             cooldownTicks={120}
             warmupTicks={50}
             onEngineStop={enableAutoRotation}
@@ -412,9 +373,9 @@ export function DashboardView() {
         ) : null}
       </div>
 
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_28%,rgba(3,8,7,0.25)_72%,rgba(3,8,7,0.75)_100%)]" />
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-[#030807]/90 to-transparent" />
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-[#030807]/95 via-[#030807]/55 to-transparent" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_48%,rgba(2,6,23,0.38)_100%)]" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-[#020617]/75 to-transparent" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-[#020617]/90 via-[#020617]/45 to-transparent" />
 
       <header className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start justify-between gap-4 px-4 pt-4 sm:px-7 sm:pt-6">
         <MetricReadout
@@ -422,15 +383,14 @@ export function DashboardView() {
           label="Active beacons"
           value="04"
           detail="Local uplinks"
-          accent="emerald"
         />
 
         <div className="absolute left-1/2 top-5 hidden -translate-x-1/2 text-center sm:block">
-          <div className="flex items-center justify-center gap-2 text-[10px] font-medium tracking-[0.32em] text-emerald-100/70 uppercase">
-            <ScanLine className="size-3.5 text-emerald-400" />
+          <div className="flex items-center justify-center gap-2 text-xs font-medium tracking-wide text-zinc-200">
+            <Network className="size-3.5 text-zinc-400" />
             Neural Nexus
           </div>
-          <p className="mt-1.5 font-mono text-[9px] tracking-[0.18em] text-slate-500 uppercase">
+          <p className="mt-1.5 text-[11px] text-zinc-500">
             Bengaluru developer mesh · {DEVELOPERS.nodes.length} nodes
           </p>
         </div>
@@ -441,7 +401,6 @@ export function DashboardView() {
             label="Network carbon offset"
             value="1.2 kg"
             detail="Today · estimated"
-            accent="cyan"
             align="right"
           />
           <MetricReadout
@@ -449,7 +408,6 @@ export function DashboardView() {
             label="Bengaluru grid"
             value="Optimal"
             detail={`${availableCount} developers available`}
-            accent="emerald"
             align="right"
           />
         </div>
@@ -457,19 +415,18 @@ export function DashboardView() {
 
       <div className="pointer-events-none absolute bottom-32 left-4 z-10 hidden sm:block sm:left-7">
         {hoveredNode ? (
-          <div className="max-w-[260px] border-l border-emerald-400/50 bg-black/35 py-1 pl-3 font-mono backdrop-blur-md">
-            <p className="text-[10px] font-semibold tracking-wider text-white uppercase">{hoveredNode.name}</p>
-            <p className="mt-1 text-[9px] text-slate-400">
-              {hoveredNode.skill} <span className="text-slate-600">/</span> {hoveredNode.area}
+          <div className="max-w-[260px] rounded-lg border border-white/5 bg-black/40 px-3 py-2 backdrop-blur-2xl">
+            <p className="text-xs font-medium text-white">{hoveredNode.name}</p>
+            <p className="mt-1 text-[11px] text-zinc-400">
+              {hoveredNode.skill} <span className="text-zinc-600">·</span> {hoveredNode.area}
             </p>
-            <p className={hoveredNode.available ? "mt-1 text-[9px] text-emerald-300" : "mt-1 text-[9px] text-slate-500"}>
-              {hoveredNode.available ? "AVAILABLE · OPTIMAL GRID" : "BUSY · DIMMED"}
+            <p className={hoveredNode.available ? "mt-1 text-[11px] text-emerald-300" : "mt-1 text-[11px] text-zinc-500"}>
+              {hoveredNode.available ? "Available" : "Busy"}
             </p>
           </div>
         ) : (
-          <div className="flex items-center gap-2 font-mono text-[9px] tracking-wider text-slate-500 uppercase">
-            <Crosshair className="size-3 text-emerald-400/70" />
-            Drag to orbit <span className="text-slate-700">·</span> Select a node to inspect
+          <div className="flex items-center gap-2 text-[11px] text-zinc-500">
+            Drag to orbit <span className="text-zinc-700">·</span> Select a node to inspect
           </div>
         )}
       </div>
@@ -478,66 +435,59 @@ export function DashboardView() {
         onSubmit={submitCommand}
         className="absolute bottom-5 left-1/2 z-20 w-[calc(100%-2rem)] max-w-4xl -translate-x-1/2 sm:bottom-7"
       >
-        <div className="absolute -inset-px rounded-2xl bg-gradient-to-r from-emerald-400/40 via-cyan-400/30 to-emerald-400/40 opacity-70 blur-sm" />
-        <div className="relative rounded-2xl border border-white/10 bg-[#07100f]/85 shadow-[0_0_45px_rgba(16,185,129,0.12),inset_0_1px_0_rgba(255,255,255,0.07)] backdrop-blur-xl">
+        <div className="relative rounded-2xl border border-emerald-500/20 bg-slate-950/40 shadow-[0_0_24px_rgba(16,185,129,0.06)] backdrop-blur-xl transition-all duration-300 hover:border-emerald-400/40">
           <div className="flex items-center gap-3 px-3 py-3 sm:gap-4 sm:px-5 sm:py-4">
-            <div className="hidden size-9 shrink-0 place-items-center rounded-lg border border-emerald-400/20 bg-emerald-400/[0.07] text-emerald-300 sm:grid">
+            <div className="hidden size-9 shrink-0 place-items-center rounded-lg border border-white/5 bg-white/[0.03] text-zinc-300 sm:grid">
               <Sparkles className="size-4" />
             </div>
             <div className="min-w-0 flex-1">
-              <label htmlFor="nexus-command" className="mb-1 flex items-center gap-1.5 font-mono text-[9px] tracking-[0.16em] text-emerald-300/75 uppercase">
+              <label htmlFor="nexus-command" className="mb-1 flex items-center gap-1.5 text-[11px] text-zinc-500">
                 <Terminal className="size-3" />
-                Gemini command interface
-                <span className="relative ml-1 flex size-1.5">
-                  <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-60" />
-                  <span className="relative inline-flex size-1.5 rounded-full bg-emerald-400" />
-                </span>
+                Ask for a collaborator
               </label>
               <input
                 id="nexus-command"
                 value={command}
                 onChange={(event) => setCommand(event.target.value)}
-                placeholder={placeholder}
+                placeholder={COMMAND_PLACEHOLDER}
                 autoComplete="off"
                 disabled={isLoading}
-                className="w-full bg-transparent font-mono text-xs text-white outline-none placeholder:text-slate-500 sm:text-sm"
+                className="w-full bg-transparent text-sm text-white outline-none placeholder:text-zinc-600 sm:text-base"
               />
             </div>
             <button
               type="submit"
               disabled={!command.trim() || isLoading}
               aria-label="Run command"
-              className="grid size-9 shrink-0 place-items-center rounded-lg border border-emerald-300/30 bg-emerald-400 text-[#03100b] shadow-[0_0_18px_rgba(16,185,129,0.2)] transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-40 sm:size-10"
+              className="grid size-9 shrink-0 place-items-center rounded-lg border border-white/10 bg-zinc-100 text-zinc-900 transition-all duration-300 hover:border-white/20 hover:bg-white disabled:cursor-not-allowed disabled:opacity-40 sm:size-10"
             >
               {isLoading ? <LoaderCircle className="size-4 animate-spin" /> : <ArrowUp className="size-4" />}
             </button>
           </div>
-          <div className="flex min-h-8 flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t border-white/[0.06] px-4 py-2 font-mono text-[9px] text-slate-500 sm:px-5">
+          <div className="flex min-h-8 flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t border-white/5 px-4 py-2 text-[10px] text-zinc-500 sm:px-5">
             <span className="flex items-center gap-1.5">
-              <Shield className="size-3 text-emerald-400/70" />
+              <Shield className="size-3 text-zinc-500" />
               {isLoading ? (
-                <span className="animate-pulse text-emerald-300 [text-shadow:0_0_10px_rgba(16,185,129,0.8)]">
-                  GEMINI IS ANALYZING THE NETWORK...
-                </span>
+                <span className="text-zinc-300">Finding collaborators…</span>
               ) : commandError ? (
                 <span role="alert" className="text-rose-300">
-                  MATCH FAILED · {commandError}
+                  {commandError}
                 </span>
               ) : commandResult ? (
-                `AI MATCH · ${commandResult.matches.length} NODE${commandResult.matches.length === 1 ? "" : "S"} · ${commandResult.searchIntent}`
+                `${commandResult.matches.length} result${commandResult.matches.length === 1 ? "" : "s"} · ${commandResult.searchIntent}`
               ) : (
-                "NEURAL LINK READY · DEVELOPER GRAPH"
+                "Describe the skills or experience you need"
               )}
             </span>
-            <span className="flex items-center gap-1.5 tracking-wider uppercase">
-              <LocateFixed className="size-3 text-cyan-300/70" />
-              BLR mesh <span className="text-slate-700">/</span> {availableCount} of 50 online
+            <span className="flex items-center gap-1.5">
+              <LocateFixed className="size-3 text-zinc-500" />
+              {availableCount} of 50 available
             </span>
           </div>
         </div>
 
         {commandResult ? (
-          <div className="mx-auto mt-2 flex w-fit max-w-full flex-wrap justify-center gap-2 rounded-full border border-emerald-400/15 bg-[#07100f]/90 px-3 py-1.5 font-mono text-[9px] text-emerald-100/75 backdrop-blur-xl">
+          <div className="mx-auto mt-2 flex w-fit max-w-full flex-wrap justify-center gap-2 rounded-full border border-white/5 bg-black/60 px-3 py-1.5 text-[11px] text-zinc-300 backdrop-blur-2xl">
             {commandResult.matches.length ? (
               <>
                 {commandResult.matches.slice(0, 3).map((node) => (
@@ -545,7 +495,7 @@ export function DashboardView() {
                     key={node.id}
                     type="button"
                     onClick={() => selectNode(node)}
-                    className="transition hover:text-emerald-300"
+                    className="transition-colors duration-300 hover:text-white"
                   >
                     {node.name} <span className="text-slate-600">·</span> {node.skill}
                   </button>
@@ -561,13 +511,13 @@ export function DashboardView() {
         ) : null}
       </form>
 
-      <div className="pointer-events-none absolute bottom-32 right-4 z-10 hidden items-center gap-3 font-mono text-[9px] tracking-wider text-slate-500 uppercase sm:flex sm:right-7">
+      <div className="pointer-events-none absolute bottom-32 right-4 z-10 hidden items-center gap-3 text-[11px] text-zinc-500 sm:flex sm:right-7">
         <span className="flex items-center gap-1.5">
-          <span className="size-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,245,189,.8)]" />
+          <span className="size-1.5 rounded-full bg-emerald-300" />
           Available
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="size-1.5 rounded-full bg-slate-600" />
+          <span className="size-1.5 rounded-full bg-zinc-500" />
           Busy
         </span>
         <span className="text-slate-700">·</span>
@@ -582,32 +532,25 @@ function MetricReadout({
   label,
   value,
   detail,
-  accent,
   align = "left",
 }: {
   icon: React.ReactNode;
   label: string;
   value: string;
   detail: string;
-  accent: "emerald" | "cyan";
   align?: "left" | "right";
 }) {
-  const color =
-    accent === "emerald"
-      ? "text-emerald-300 border-emerald-400/20"
-      : "text-cyan-300 border-cyan-400/20";
-
   return (
-    <div className={`min-w-[136px] border-l bg-black/25 px-3 py-2 backdrop-blur-md sm:min-w-[172px] sm:px-4 ${color} ${align === "right" ? "border-r border-l-0 text-right" : ""}`}>
-      <p className={`flex items-center gap-1.5 font-mono text-[8px] tracking-[0.16em] text-slate-500 uppercase sm:text-[9px] ${align === "right" ? "justify-end" : ""}`}>
+    <div className={`min-w-[136px] border border-emerald-500/20 bg-slate-950/40 px-3 py-2 text-zinc-400 backdrop-blur-xl sm:min-w-[172px] sm:px-4 ${align === "right" ? "border-r text-right" : ""}`}>
+      <p className={`flex items-center gap-1.5 text-[10px] text-zinc-500 ${align === "right" ? "justify-end" : ""}`}>
         {align === "left" ? icon : null}
         {label}
         {align === "right" ? icon : null}
       </p>
-      <p className={`mt-1 font-mono text-sm font-medium tracking-wide sm:text-base ${accent === "emerald" ? "text-emerald-300" : "text-cyan-200"}`}>
+      <p className="mt-1 text-sm font-medium text-zinc-100 sm:text-base">
         {value}
       </p>
-      <p className="mt-0.5 font-mono text-[8px] text-slate-500 sm:text-[9px]">{detail}</p>
+      <p className="mt-0.5 text-[10px] text-zinc-500">{detail}</p>
     </div>
   );
 }

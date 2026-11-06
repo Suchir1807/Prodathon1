@@ -10,10 +10,10 @@ import {
   LayoutDashboard,
   Menu,
   MessageSquare,
+  PanelsTopLeft,
   Repeat2,
   PanelLeftClose,
   PanelLeftOpen,
-  Radar,
   Users,
   Zap,
   X,
@@ -30,7 +30,7 @@ import { cn } from "@/lib/utils";
 
 const LINKS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/workspace", label: "Workspace", icon: Radar },
+  { href: "/workspace", label: "Workspace", icon: PanelsTopLeft },
   { href: "/find-partners", label: "Find Partners", icon: Users },
   { href: "/messages", label: "Messages", icon: MessageSquare },
   { href: "/trading-floor", label: "Trading Floor", icon: Repeat2 },
@@ -74,7 +74,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       ) : null}
       <a
         href="#main-content"
-        className="sr-only z-50 rounded-md bg-[#ccff00] px-4 py-2 font-medium text-[#0a0f1c] focus:not-sr-only focus:fixed focus:top-2 focus:left-2"
+        className="sr-only z-50 rounded-md bg-white px-4 py-2 font-medium text-black focus:not-sr-only focus:fixed focus:top-2 focus:left-2"
       >
         Skip to main content
       </a>
@@ -90,7 +90,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           isCollapsed ? "md:pl-16" : "md:pl-60",
         )}
       >
-        <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-white/8 bg-[#0a0f1c]/75 px-4 backdrop-blur-xl md:px-6">
+        <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-white/5 bg-black/70 px-4 backdrop-blur-2xl md:px-6">
           <button
             type="button"
             className="inline-flex size-8 items-center justify-center rounded-md text-slate-300 md:hidden"
@@ -154,7 +154,7 @@ function AppSidebar({
           onClick={onNavigate}
           className={cn("flex min-w-0 flex-1 items-center gap-2", isCollapsed && "md:flex-none")}
         >
-          <span className="flex size-8 shrink-0 items-center justify-center rounded-md border border-[#ccff00]/30 text-[#ccff00]">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-md border border-white/10 text-zinc-300">
             <Hexagon className="size-4" />
           </span>
           <span className={cn("truncate text-sm font-semibold tracking-tight text-white", isCollapsed && "md:hidden")}>
@@ -163,7 +163,7 @@ function AppSidebar({
         </Link>
         <button
           type="button"
-          className="hidden size-8 shrink-0 items-center justify-center rounded-md text-slate-400 transition hover:bg-white/5 hover:text-[#ccff00] md:inline-flex"
+          className="hidden size-8 shrink-0 items-center justify-center rounded-md text-zinc-400 transition-all duration-300 hover:bg-white/5 hover:text-white md:inline-flex"
           aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           aria-expanded={!isCollapsed}
           aria-controls="primary-navigation"
@@ -200,19 +200,19 @@ function AppSidebar({
                 "flex items-center gap-2 rounded-md border-l-2 px-3 py-2 text-sm transition-colors",
                 isCollapsed && "md:justify-center md:px-0",
                 active
-                  ? "border-[#ccff00] bg-slate-800/80 text-[#ccff00]"
-                  : "border-transparent text-slate-400 hover:bg-white/5 hover:text-white",
+                  ? "border-white/25 bg-white/[0.05] text-white"
+                  : "border-transparent text-zinc-400 hover:bg-white/[0.03] hover:text-white",
               )}
             >
               <span className="relative">
                 <Icon className="size-4" />
                 {link.href === "/messages" && unread > 0 && isCollapsed ? (
-                  <span className="absolute -top-1 -right-1 hidden size-1.5 rounded-full bg-[#ccff00] md:block" />
+                  <span className="absolute -top-1 -right-1 hidden size-1.5 rounded-full bg-emerald-300 md:block" />
                 ) : null}
               </span>
               <span className={cn("flex-1 truncate", isCollapsed && "md:hidden")}>{link.label}</span>
               {link.href === "/messages" && unread > 0 ? (
-                <span className={cn("text-[11px] font-medium text-[#ccff00]", isCollapsed && "md:hidden")}>
+                <span className={cn("text-[11px] font-medium text-zinc-300", isCollapsed && "md:hidden")}>
                   {unread}
                 </span>
               ) : null}
@@ -229,7 +229,7 @@ function AppSidebar({
           className={cn(
             "flex w-full items-center gap-2 rounded-lg border border-white/6 bg-white/[0.02] px-2 py-2 text-left transition hover:bg-white/5",
             isCollapsed && "md:justify-center md:px-0",
-            pathname === "/profile" && "border-[#ccff00]/30 bg-slate-800/50",
+            pathname === "/profile" && "border-white/15 bg-white/[0.04]",
           )}
         >
           <UserAvatar name={name} className="size-8 text-[10px]" />

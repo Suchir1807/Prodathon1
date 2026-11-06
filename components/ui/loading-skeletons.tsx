@@ -2,7 +2,7 @@ function Shimmer({ className = "" }: { className?: string }) {
   return (
     <div
       aria-hidden="true"
-      className={`animate-pulse rounded-md border border-white/[0.06] bg-gradient-to-r from-white/[0.025] via-white/[0.08] to-white/[0.025] ${className}`}
+      className={`animate-pulse rounded-md border border-border bg-gradient-to-r from-muted/70 via-accent/70 to-muted/70 ${className}`}
     />
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Radio, Users } from "lucide-react";
+import { FileText, Users } from "lucide-react";
 import randomColor from "randomcolor";
 import { WebrtcProvider } from "y-webrtc";
 import * as Y from "yjs";
@@ -22,104 +22,121 @@ export function SprintWarRoom() {
   const [peers, setPeers] = useState<RemotePeer[]>([]);
   const [connectionStatus, setConnectionStatus] = useState("connecting");
   const [error, setError] = useState("");
+  const [editorFocused, setEditorFocused] = useState(false);
   const docRef = useRef<Y.Doc | null>(null);
   const scratchpadRef = useRef<Y.Text | null>(null);
 
   useEffect(() => {
     const doc = new Y.Doc();
-    let provider: WebrtcProvider;
+    let disposed = false;
+    let cleanupSession: (() => void) | null = null;
 
-    try {
-      provider = new WebrtcProvider("skillin-sprint-room-alpha", doc);
-    } catch (setupError) {
-      doc.destroy();
-      setError(
-        setupError instanceof Error
-          ? setupError.message
-          : "Unable to initialize the live room.",
-      );
-      return;
-    }
+    void Promise.resolve().then(() => {
+      if (disposed) return;
 
-    const scratchpad = doc.getText("scratchpad");
-    docRef.current = doc;
-    scratchpadRef.current = scratchpad;
-    const awareness = provider.awareness;
-    const clientId = doc.clientID;
-    const color = randomColor({ luminosity: "bright" });
-    const name = `Operator ${String(clientId).slice(-4)}`;
-    let animationFrame: number | null = null;
-    let latestPointer: { x: number; y: number } | null = null;
-
-    awareness.setLocalStateField("user", { name, color });
-    setText(scratchpad.toString());
-
-    const onTextChange = () => setText(scratchpad.toString());
-    const onAwarenessChange = () => {
-      const currentPeers: RemotePeer[] = [];
-
-      for (const [peerId, state] of awareness.getStates()) {
-        if (peerId === clientId || !isRecord(state.user)) continue;
-
-        const user = state.user;
-        if (typeof user.name !== "string" || typeof user.color !== "string") continue;
-
-        const cursorState = isRecord(state.cursor) ? state.cursor : null;
-        const cursor =
-          cursorState &&
-          typeof cursorState.x === "number" &&
-          Number.isFinite(cursorState.x) &&
-          typeof cursorState.y === "number" &&
-          Number.isFinite(cursorState.y)
-            ? { x: cursorState.x, y: cursorState.y }
-            : null;
-
-        currentPeers.push({
-          id: peerId,
-          name: user.name,
-          color: user.color,
-          cursor,
-        });
+      let provider: WebrtcProvider;
+      try {
+        provider = new WebrtcProvider("skillin-sprint-room-alpha", doc);
+      } catch (setupError) {
+        setConnectionStatus("unavailable");
+        setError(
+          setupError instanceof Error
+            ? setupError.message
+            : "Unable to initialize the live room.",
+        );
+        cleanupSession = () => doc.destroy();
+        return;
       }
 
-      setPeers(currentPeers);
-    };
-    const onProviderStatus = ({ status }: { status: string }) => {
-      setConnectionStatus(status);
-    };
-    const onPointerMove = (event: PointerEvent) => {
-      latestPointer = { x: event.clientX, y: event.clientY };
-      if (animationFrame !== null) return;
+      const scratchpad = doc.getText("scratchpad");
+      const awareness = provider.awareness;
+      const clientId = doc.clientID;
+      const color = randomColor({ luminosity: "bright" });
+      const name = `Operator ${String(clientId).slice(-4)}`;
+      let animationFrame: number | null = null;
+      let latestPointer: { x: number; y: number } | null = null;
 
-      animationFrame = window.requestAnimationFrame(() => {
-        if (latestPointer) awareness.setLocalStateField("cursor", latestPointer);
-        animationFrame = null;
-      });
-    };
-    const onPointerLeave = (event: PointerEvent) => {
-      if (event.relatedTarget !== null) return;
-      latestPointer = null;
-      awareness.setLocalStateField("cursor", null);
-    };
+      docRef.current = doc;
+      scratchpadRef.current = scratchpad;
+      awareness.setLocalStateField("user", { name, color });
+      setText(scratchpad.toString());
 
-    scratchpad.observe(onTextChange);
-    awareness.on("change", onAwarenessChange);
-    provider.on("status", onProviderStatus);
-    window.addEventListener("pointermove", onPointerMove);
-    window.addEventListener("pointerout", onPointerLeave);
-    onAwarenessChange();
+      const onTextChange = () => setText(scratchpad.toString());
+      const onAwarenessChange = () => {
+        const currentPeers: RemotePeer[] = [];
+
+        for (const [peerId, state] of awareness.getStates()) {
+          if (peerId === clientId || !isRecord(state.user)) continue;
+
+          const user = state.user;
+          if (typeof user.name !== "string" || typeof user.color !== "string") continue;
+
+          const cursorState = isRecord(state.cursor) ? state.cursor : null;
+          const cursor =
+            cursorState &&
+            typeof cursorState.x === "number" &&
+            Number.isFinite(cursorState.x) &&
+            typeof cursorState.y === "number" &&
+            Number.isFinite(cursorState.y)
+              ? { x: cursorState.x, y: cursorState.y }
+              : null;
+
+          currentPeers.push({
+            id: peerId,
+            name: user.name,
+            color: user.color,
+            cursor,
+          });
+        }
+
+        setPeers(currentPeers);
+      };
+      const onProviderStatus = ({ connected }: { connected: boolean }) => {
+        setConnectionStatus(connected ? "connected" : "disconnected");
+      };
+      const onPointerMove = (event: PointerEvent) => {
+        latestPointer = { x: event.clientX, y: event.clientY };
+        if (animationFrame !== null) return;
+
+        animationFrame = window.requestAnimationFrame(() => {
+          if (latestPointer) awareness.setLocalStateField("cursor", latestPointer);
+          animationFrame = null;
+        });
+      };
+      const onPointerLeave = (event: PointerEvent) => {
+        if (event.relatedTarget !== null) return;
+        latestPointer = null;
+        awareness.setLocalStateField("cursor", null);
+      };
+
+      scratchpad.observe(onTextChange);
+      awareness.on("change", onAwarenessChange);
+      provider.on("status", onProviderStatus);
+      window.addEventListener("pointermove", onPointerMove);
+      window.addEventListener("pointerout", onPointerLeave);
+      onAwarenessChange();
+
+      cleanupSession = () => {
+        scratchpad.unobserve(onTextChange);
+        awareness.off("change", onAwarenessChange);
+        provider.off("status", onProviderStatus);
+        window.removeEventListener("pointermove", onPointerMove);
+        window.removeEventListener("pointerout", onPointerLeave);
+        if (animationFrame !== null) window.cancelAnimationFrame(animationFrame);
+        docRef.current = null;
+        scratchpadRef.current = null;
+        provider.destroy();
+        doc.destroy();
+      };
+    });
 
     return () => {
-      scratchpad.unobserve(onTextChange);
-      awareness.off("change", onAwarenessChange);
-      provider.off("status", onProviderStatus);
-      window.removeEventListener("pointermove", onPointerMove);
-      window.removeEventListener("pointerout", onPointerLeave);
-      if (animationFrame !== null) window.cancelAnimationFrame(animationFrame);
-      docRef.current = null;
-      scratchpadRef.current = null;
-      provider.destroy();
-      doc.destroy();
+      disposed = true;
+      if (cleanupSession) {
+        cleanupSession();
+      } else {
+        doc.destroy();
+      }
     };
   }, []);
 
@@ -160,61 +177,69 @@ export function SprintWarRoom() {
   }
 
   return (
-    <section className="relative mb-7 overflow-hidden rounded-xl border border-emerald-500/20 bg-[#06110f]/80 p-4 shadow-[0_0_42px_rgba(16,185,129,0.07)] backdrop-blur-xl sm:p-5">
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(16,185,129,0.09),transparent_42%)]"
-      />
-      <header className="relative mb-4 flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 text-[10px] font-semibold tracking-[0.2em] text-emerald-300 uppercase">
-            <Radio className="size-3.5" />
-            Sprint War Room / P2P Channel
+    <>
+      <section className="relative mb-7 rounded-xl border border-white/5 bg-black/40 p-4 shadow-[0_0_15px_rgba(255,255,255,0.03)] backdrop-blur-2xl transition-colors duration-300 hover:border-white/10 sm:p-5">
+        <header className="mb-4 flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 text-xs font-medium text-zinc-400">
+              <FileText className="size-3.5 text-zinc-500" />
+              Shared workspace
+            </div>
+            <h2 className="mt-2 text-base font-semibold text-white">Live scratchpad</h2>
+            <p className="mt-1 text-xs text-zinc-500">
+              Notes and cursor presence update in real time.
+            </p>
           </div>
-          <h2 className="mt-2 text-base font-semibold tracking-wide text-white">
-            Live collaboration feed
-          </h2>
-          <p className="mt-1 text-xs text-slate-400">
-            Markdown and cursor telemetry sync directly between connected operators.
-          </p>
-        </div>
-        <div
-          className="flex items-center gap-2 rounded-md border border-emerald-400/30 bg-emerald-950/50 px-3 py-2 font-mono text-xs text-emerald-100 shadow-[0_0_22px_rgba(16,185,129,0.14)]"
-          aria-live="polite"
-          aria-label={`Connected peers: ${peers.length}`}
-        >
-          <Users className="size-3.5 text-emerald-300" />
-          <span>Connected Peers: {peers.length}</span>
-        </div>
-      </header>
+          <div
+            className="flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-zinc-300"
+            aria-live="polite"
+            aria-label={`Connected peers: ${peers.length}`}
+          >
+            <Users className="size-3.5 text-zinc-500" />
+            <span>{peers.length} connected</span>
+          </div>
+        </header>
 
-      <div className="relative mb-2 flex items-center justify-between gap-3 font-mono text-[10px] tracking-wide text-slate-500 uppercase">
-        <span>Peer channel // skillin-sprint-room-alpha</span>
-        <span className="flex items-center gap-1.5">
-          <span
-            className={`size-1.5 rounded-full ${
-              connectionStatus === "connected" ? "bg-emerald-400" : "bg-amber-400"
+        <div className="mb-2 flex items-center justify-between gap-3 text-[11px] text-zinc-500">
+          <span>Live Markdown</span>
+          <span className="flex items-center gap-1.5">
+            <span
+              className={`size-1.5 rounded-full ${
+                connectionStatus === "connected" ? "bg-emerald-400" : "bg-zinc-600"
+              }`}
+            />
+            {connectionStatus === "connected" ? "Connected" : connectionStatus}
+          </span>
+        </div>
+        <label className="sr-only" htmlFor="sprint-war-room-scratchpad">
+          Live Markdown scratchpad
+        </label>
+        <div className="relative pt-px">
+          <div
+            aria-hidden="true"
+            className={`absolute inset-x-0 top-0 z-10 h-px transition-all duration-300 ${
+              editorFocused
+                ? "bg-gradient-to-r from-transparent via-emerald-400/80 to-transparent shadow-[0_0_12px_rgba(52,211,153,0.4)]"
+                : "bg-white/5"
             }`}
           />
-          {connectionStatus === "connected" ? "Signaling online" : connectionStatus}
-        </span>
-      </div>
-      <label className="sr-only" htmlFor="sprint-war-room-scratchpad">
-        Live Markdown scratchpad
-      </label>
-      <textarea
-        id="sprint-war-room-scratchpad"
-        value={text}
-        onChange={(event) => updateScratchpad(event.target.value)}
-        spellCheck={false}
-        placeholder={"# Sprint brief\n\n## Objective\n\n## Decisions\n\n## Next move"}
-        className="relative min-h-52 w-full resize-y rounded-lg border border-emerald-500/30 bg-black/40 p-4 font-mono text-sm leading-relaxed text-emerald-50 outline-none backdrop-blur-xl placeholder:text-emerald-100/25 focus:border-emerald-400/75 focus:ring-1 focus:ring-emerald-400/40 focus:shadow-[0_0_28px_rgba(16,185,129,0.16)]"
-      />
-      {error ? (
-        <p role="alert" className="mt-2 text-xs text-red-300">
-          Live room unavailable: {error}
-        </p>
-      ) : null}
+          <textarea
+            id="sprint-war-room-scratchpad"
+            value={text}
+            onChange={(event) => updateScratchpad(event.target.value)}
+            onFocus={() => setEditorFocused(true)}
+            onBlur={() => setEditorFocused(false)}
+            spellCheck={false}
+            placeholder={"# Sprint brief\n\n## Objective\n\n## Decisions\n\n## Next move"}
+            className="scrollbar-hide min-h-52 w-full resize-y border-0 bg-transparent p-4 font-mono text-sm leading-relaxed text-zinc-100 outline-none placeholder:text-zinc-600 focus:ring-0"
+          />
+        </div>
+        {error ? (
+          <p role="alert" className="mt-2 text-xs text-red-300">
+            Live room unavailable: {error}
+          </p>
+        ) : null}
+      </section>
 
       <div aria-hidden="true" className="pointer-events-none fixed inset-0 z-[100]">
         {peers.map(
@@ -231,19 +256,19 @@ export function SprintWarRoom() {
               >
                 <svg
                   aria-hidden="true"
-                  className="size-5 drop-shadow-[0_0_5px_currentColor]"
+                  className="size-4 opacity-80"
                   fill="currentColor"
                   viewBox="0 0 24 24"
                 >
                   <path d="M5.5 3.5 19 13l-6.1 1.2-3.4 5.4-4-16.1Z" />
                 </svg>
-                <span className="ml-4 -mt-1 block w-max rounded border border-current/40 bg-black/80 px-1.5 py-0.5 font-mono text-[10px] shadow-[0_0_12px_currentColor]">
+                <span className="ml-3 -mt-1 block w-max rounded border border-white/10 bg-zinc-950/90 px-1.5 py-0.5 font-mono text-[10px] text-zinc-200">
                   {peer.name}
                 </span>
               </div>
             ),
         )}
       </div>
-    </section>
+    </>
   );
 }

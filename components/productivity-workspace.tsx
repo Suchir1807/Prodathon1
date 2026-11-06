@@ -117,7 +117,7 @@ function SortableTaskCard({
         transition={{ type: "spring", stiffness: 260, damping: 20 }}
         whileHover={{ scale: 1.015 }}
         className={cn(
-          "touch-none cursor-grab rounded-md border border-white/8 bg-white/[0.025] p-3 transition-[border-color,box-shadow,background-color] hover:border-[#ccff00]/30 hover:bg-[#ccff00]/[0.035] hover:shadow-[0_0_20px_rgba(204,255,0,0.08)] active:cursor-grabbing focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ccff00]",
+          "touch-none cursor-grab rounded-xl border border-white/8 bg-white/[0.025] p-3 transition-[border-color,box-shadow,background-color] hover:border-signal/30 hover:bg-signal/[0.035] hover:shadow-[0_0_20px_rgba(16,185,129,0.08)] active:cursor-grabbing focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-signal",
           isDragging && "cursor-grabbing",
         )}
         aria-label={`${task.title}. Drag to change task status.`}
@@ -126,7 +126,7 @@ function SortableTaskCard({
           <GripVertical className="mt-0.5 size-4 shrink-0 text-slate-500" />
           <p className="min-w-0 flex-1 break-words text-sm leading-relaxed text-slate-200">{task.title}</p>
           {task.priority !== undefined ? (
-            <span className="shrink-0 font-mono text-[10px] text-[#ccff00]/80">P{task.priority}</span>
+            <span className="shrink-0 font-mono text-[10px] text-signal/80">P{task.priority}</span>
           ) : null}
         </div>
         <p className="mt-2 pl-6 text-[10px] text-slate-400">{COLUMNS[index]?.title}</p>
@@ -492,6 +492,8 @@ export function ProductivityWorkspace({
     ? Math.max(0, Math.floor((new Date(workspace.expiresAt).getTime() - now) / 1000))
     : null;
   const expired = secondsLeft === 0;
+  const completedTaskCount = tasks.filter((task) => task.status === "done").length;
+  const taskProgress = tasks.length ? Math.round((completedTaskCount / tasks.length) * 100) : 0;
 
   useEffect(() => {
     if (
@@ -743,22 +745,31 @@ export function ProductivityWorkspace({
         .join(":");
 
   return (
-    <div className="mx-auto flex min-h-[calc(100dvh-3.5rem)] max-w-[1600px] flex-col px-4 py-5 md:px-6">
-      <header className="mb-5 flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-4">
-        <div>
-          <p className="text-[10px] font-semibold tracking-[0.16em] text-[#ccff00] uppercase">
+    <div className="relative isolate mx-auto flex min-h-[calc(100dvh-3.5rem)] max-w-[1600px] flex-col bg-[#07110c] px-4 py-5 text-white md:px-6">
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+        <div className="absolute -top-56 left-1/3 size-[min(90vw,760px)] rounded-full bg-emerald-500/[0.07] blur-[120px]" />
+      </div>
+      <header className="mb-4 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-white/10 bg-[#0b1710]/85 px-4 py-4 shadow-[0_16px_44px_rgba(0,0,0,0.18)] backdrop-blur-xl md:px-5">
+        <div className="min-w-0">
+          <p className="text-[10px] font-semibold tracking-[0.16em] text-emerald-200/75 uppercase">
             {workspace.type === "sprint" ? "Flash Build" : "Skill Trade"}
           </p>
-          <h1 className="mt-1 text-xl font-semibold text-white">Shared productivity workspace</h1>
+          <h1 className="mt-1 font-heading text-lg font-semibold tracking-tight text-white sm:text-xl">Build together</h1>
+          <p className="mt-1 text-xs text-slate-400">
+            You and {partner.displayName} · {completedTaskCount} of {tasks.length} tasks complete
+          </p>
         </div>
         {workspace.type === "sprint" ? (
-          <div className="flex items-center gap-3 border border-red-400/25 bg-red-950/30 px-4 py-2">
-            <Clock3 className="size-4 text-red-300" />
+          <div className={cn(
+            "flex items-center gap-3 rounded-xl border px-4 py-2",
+            expired ? "border-rose-300/25 bg-rose-950/25" : "border-signal/20 bg-signal/[0.06]",
+          )}>
+            <Clock3 className={cn("size-4", expired ? "text-rose-300" : "text-signal")} />
             <div>
-              <p className="text-[10px] tracking-wide text-red-200/70 uppercase">
+              <p className={cn("text-[10px] tracking-wide uppercase", expired ? "text-rose-200/70" : "text-emerald-100/70")}>
                 {expired ? "Build window ended" : "Time remaining"}
               </p>
-              <p className="font-mono text-xl font-semibold tabular-nums text-white">{countdown}</p>
+              <p className={cn("font-mono text-xl font-semibold tabular-nums", expired ? "text-rose-100" : "text-white")}>{countdown}</p>
             </div>
           </div>
         ) : null}
@@ -792,6 +803,28 @@ export function ProductivityWorkspace({
 
       <SprintWarRoom />
 
+      <div className="mb-5 rounded-xl border border-white/[0.07] bg-white/[0.025] px-4 py-3">
+        <div className="mb-2 flex items-center justify-between text-[11px]">
+          <span className="font-medium text-slate-300">Quest progress</span>
+          <span className="tabular-nums text-slate-400">
+            {taskProgress}%
+          </span>
+        </div>
+        <div
+          className="h-1 overflow-hidden rounded-full bg-white/10"
+          role="progressbar"
+          aria-label="Completed workspace tasks"
+          aria-valuemin={0}
+          aria-valuemax={tasks.length || 1}
+          aria-valuenow={completedTaskCount}
+        >
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-lime-300 transition-[width] duration-500"
+            style={{ width: `${taskProgress}%` }}
+          />
+        </div>
+      </div>
+
       <div className="grid flex-1 gap-7 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
         <section className="flex min-h-[55dvh] flex-col">
           <div className="mb-3 flex items-center justify-between gap-3">
@@ -800,7 +833,7 @@ export function ProductivityWorkspace({
               <p className="mt-1 text-xs text-slate-500">Markdown, notes, links, and working snippets</p>
             </div>
             <span className="flex items-center gap-1.5 text-xs text-slate-400" aria-live="polite">
-              {saveStatus === "saving" ? <Loader2 className="size-3.5 animate-spin" /> : saveStatus === "saved" ? <Check className="size-3.5 text-[#ccff00]" /> : <Save className="size-3.5" />}
+              {saveStatus === "saving" ? <Loader2 className="size-3.5 animate-spin" /> : saveStatus === "saved" ? <Check className="size-3.5 text-signal" /> : <Save className="size-3.5" />}
               {saveStatus === "saving" ? "Saving" : saveStatus === "saved" ? "Saved" : saveStatus === "error" ? "Save failed" : "Unsaved"}
             </span>
           </div>
@@ -812,8 +845,8 @@ export function ProductivityWorkspace({
                 aria-pressed={scratchpadMode === mode}
                 onClick={() => setScratchpadMode(mode)}
                 className={cn(
-                  "rounded px-2.5 py-1 text-xs capitalize transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ccff00]",
-                  scratchpadMode === mode ? "bg-[#ccff00]/10 text-[#ccff00]" : "text-slate-500 hover:text-slate-200",
+                  "rounded-lg px-2.5 py-1 text-xs capitalize transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-signal",
+                  scratchpadMode === mode ? "bg-signal/10 text-signal" : "text-slate-500 hover:text-slate-200",
                 )}
               >
                 {mode}
@@ -830,7 +863,7 @@ export function ProductivityWorkspace({
                 disabled={expired}
                 spellCheck={false}
                 placeholder={"# Build notes\n\n## Goal\n\n## Decisions\n\n## Links and snippets"}
-                className="min-h-[55dvh] flex-1 resize-y rounded-md border border-white/10 bg-[#080d17] p-4 font-mono text-sm leading-relaxed text-slate-200 outline-none placeholder:text-slate-700 focus-visible:border-[#ccff00]/40 focus-visible:ring-2 focus-visible:ring-[#ccff00]/10"
+                className="min-h-[55dvh] flex-1 resize-y rounded-xl border border-white/10 bg-[#080d17] p-4 font-mono text-sm leading-relaxed text-slate-200 outline-none placeholder:text-slate-700 focus-visible:border-signal/40 focus-visible:ring-2 focus-visible:ring-signal/10"
               />
             </>
           ) : (

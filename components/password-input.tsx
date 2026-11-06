@@ -25,7 +25,7 @@ export function PasswordInput({
         aria-invalid={invalid || undefined}
         className={cn(
           "pr-10",
-          invalid && "border-rose-500/70 focus-visible:ring-rose-500/30",
+          invalid && "border-destructive focus-visible:ring-destructive/30",
           className,
         )}
       />
@@ -34,7 +34,7 @@ export function PasswordInput({
         aria-label={visible ? "Hide password" : "Show password"}
         aria-pressed={visible}
         onClick={() => setVisible((current) => !current)}
-        className="absolute inset-y-0 right-0 flex items-center px-3 text-neutral-400 transition-colors hover:text-neutral-100 focus-visible:text-neutral-100 focus-visible:outline-none"
+        className="absolute inset-y-0 right-0 flex items-center px-3 text-muted-foreground transition-colors hover:text-foreground focus-visible:text-foreground focus-visible:outline-none"
       >
         {visible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
       </button>

@@ -56,7 +56,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
-  if (AUTH_ROUTES.has(pathname)) {
+  if (AUTH_ROUTES.has(pathname) || pathname === "/") {
     return <>{children}</>;
   }
 

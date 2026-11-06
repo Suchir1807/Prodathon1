@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useSyncExternalStore } from "react";
-import { Bot, Circle, GripVertical, Rocket, Send } from "lucide-react";
+import { Bot, Check, Circle, Rocket, Send, Sparkles } from "lucide-react";
 
 import { useIsClient } from "@/components/profile-provider";
 import { Button } from "@/components/ui/button";
@@ -26,7 +26,7 @@ type WorkspaceTask = {
 };
 
 const PANEL =
-  "flex flex-col overflow-hidden rounded-xl border border-slate-800 bg-slate-900/50 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-md";
+  "flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0b1710]/85 shadow-[0_16px_44px_rgba(0,0,0,0.18)] backdrop-blur-xl";
 
 function workspaceFromSnapshot(snapshot: string): ActiveMissionWorkspace | null {
   if (!snapshot) return null;
@@ -81,7 +81,7 @@ function highlightJson(source: string) {
     let className = "text-slate-400";
     if (token.startsWith('"')) {
       const after = source.slice(match.index + token.length).match(/^\s*:/);
-      className = after ? "text-sky-300" : "text-lime-400";
+      className = after ? "text-sky-300" : "text-emerald-300";
     } else if (/^[{}[\]]$/.test(token)) {
       className = "text-white";
     } else if (/^[:,]$/.test(token)) {
@@ -104,12 +104,27 @@ function highlightJson(source: string) {
 
 function taskCardStyles(owner: TaskOwner) {
   return owner === "a"
-    ? "border-l-4 border-lime-400 bg-slate-900/55 hover:bg-slate-800/70"
-    : "border-l-4 border-cyan-400 bg-slate-900/55 hover:bg-slate-800/70";
+    ? "border-l-2 border-l-emerald-300/70 bg-white/[0.035]"
+    : "border-l-2 border-l-sky-300/70 bg-white/[0.035]";
 }
 
 function ownerLabel(owner: TaskOwner) {
   return owner === "a" ? "Student A · Frontend" : "Student B · Backend";
+}
+
+function getQuestDayIndex(acceptedAt: string | undefined) {
+  if (!acceptedAt) return 0;
+  const acceptedTime = Date.parse(acceptedAt);
+  if (!Number.isFinite(acceptedTime)) return 0;
+  const elapsedDays = Math.floor(Math.max(0, Date.now() - acceptedTime) / 86_400_000);
+  return Math.min(2, elapsedDays);
+}
+
+function getQuestProgress(acceptedAt: string | undefined) {
+  if (!acceptedAt) return 0;
+  const acceptedTime = Date.parse(acceptedAt);
+  if (!Number.isFinite(acceptedTime)) return 0;
+  return Math.min(100, Math.max(0, ((Date.now() - acceptedTime) / (72 * 3_600_000)) * 100));
 }
 
 export function QuestWorkspace() {
@@ -141,44 +156,81 @@ export function QuestWorkspace() {
 
   const todo = tasks.filter((t) => t.column === "todo");
   const done = tasks.filter((t) => t.column === "done");
+  const currentDay = getQuestDayIndex(activeMission.acceptedAt);
+  const progress = getQuestProgress(activeMission.acceptedAt);
 
   return (
-    <div className="flex h-[calc(100dvh-3.5rem)] flex-col overflow-hidden">
-      <header className="flex shrink-0 flex-wrap items-center justify-between gap-4 border-b border-slate-800 bg-slate-950/40 px-4 py-4 backdrop-blur-md md:px-6">
-        <div className="flex min-w-0 items-center gap-3">
-          <h1 className="truncate text-base font-semibold text-white md:text-lg">
-            {activeMission.questTitle}
-          </h1>
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-lime-400/40 bg-lime-400/10 px-2 py-0.5 text-[11px] font-medium text-lime-400">
-            <Circle className="size-2 fill-lime-400 text-lime-400 shadow-[0_0_8px_#a3e635]" />
-            Active
+    <div className="relative flex h-[calc(100dvh-3.5rem)] flex-col overflow-hidden bg-[#07110c] text-white">
+      <header className="relative z-10 flex shrink-0 flex-wrap items-center justify-between gap-4 border-b border-white/10 bg-[#07110c]/90 px-4 py-4 backdrop-blur-xl md:px-6">
+        <div className="flex min-w-0 items-start gap-3">
+          <span className="mt-0.5 grid size-9 shrink-0 place-items-center rounded-xl border border-emerald-300/20 bg-emerald-300/[0.07] text-emerald-200">
+            <Sparkles className="size-4" />
+          </span>
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold tracking-[0.16em] text-emerald-300/70 uppercase">
+              72-hour collaboration · with {activeMission.partnerName}
+            </p>
+            <h1 className="mt-1 truncate font-heading text-lg font-semibold tracking-tight text-white md:text-xl">
+              {activeMission.questTitle}
+            </h1>
+          </div>
+          <span className="mt-1 inline-flex shrink-0 items-center gap-1.5 rounded-full border border-emerald-300/25 bg-emerald-300/[0.08] px-2.5 py-1 text-[10px] font-medium text-emerald-200">
+            <Circle className="size-1.5 fill-emerald-300 text-emerald-300" />
+            Live
           </span>
         </div>
-        <div className="order-3 flex w-full justify-center md:order-none md:w-auto">
-          <div className="inline-flex flex-col items-center rounded-full border border-lime-400/30 bg-lime-400/10 px-6 py-2 shadow-[0_0_28px_rgba(163,230,53,0.12)]">
-            <p className="text-[10px] tracking-[0.2em] text-slate-500 uppercase">Sprint clock</p>
-            <p className="font-mono text-2xl font-semibold tracking-tight text-lime-400 tabular-nums md:text-3xl">
+        <div className="flex w-full items-center justify-between gap-3 sm:w-auto sm:justify-end">
+          <div className="rounded-xl border border-signal/20 bg-signal/[0.06] px-3 py-2 text-right sm:px-4">
+            <p className="text-[9px] font-medium tracking-[0.16em] text-slate-400 uppercase">Time left</p>
+            <p className="font-mono text-lg font-semibold tracking-tight text-signal tabular-nums sm:text-xl">
               {remaining}
             </p>
-            <p className="text-[10px] text-slate-500">remaining</p>
           </div>
+          <Button
+            type="button"
+            className="h-10 shrink-0 px-3.5 text-xs font-semibold sm:px-4 sm:text-sm"
+          >
+            <Rocket />
+            <span className="hidden sm:inline">Ship project</span>
+            <span className="sm:hidden">Ship</span>
+          </Button>
         </div>
-        <Button
-          type="button"
-          className="h-9 border-transparent bg-[#ccff00] px-4 text-sm font-semibold text-[#0a0f1c] hover:border-transparent hover:bg-[#d6ff4a] hover:text-[#0a0f1c] hover:shadow-[0_0_16px_rgba(204,255,0,0.5)]"
-        >
-          <Rocket />
-          Ship Project
-        </Button>
       </header>
+
+      <div className="shrink-0 border-b border-white/8 bg-[#0a160f]/80 px-4 py-3 sm:px-6">
+        <div className="mx-auto flex max-w-5xl items-center justify-between gap-3">
+          <div className="hidden min-w-32 sm:block">
+            <p className="text-[10px] font-medium tracking-wide text-emerald-200/70 uppercase">Quest progress</p>
+            <p className="mt-0.5 text-xs text-slate-400">Day {currentDay + 1} of 3</p>
+          </div>
+          <div className="h-1 flex-1 overflow-hidden rounded-full bg-white/10 sm:mx-5" role="progressbar" aria-label="Three-day quest progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}>
+            <div className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-lime-300 transition-[width] duration-700" style={{ width: `${progress}%` }} />
+          </div>
+          <ol className="flex shrink-0 items-center gap-2 sm:gap-5">
+            {(["Align", "Build", "Showcase"] as const).map((step, index) => {
+              const complete = index < currentDay;
+              const current = index === currentDay;
+              return (
+                <li key={step} className="flex items-center gap-1.5 sm:gap-2">
+                  <span className={`grid size-6 place-items-center rounded-full border text-[10px] ${complete ? "border-emerald-300/35 bg-emerald-300/10 text-emerald-200" : current ? "border-signal/40 bg-signal/10 text-signal" : "border-white/10 text-slate-500"}`}>
+                    {complete ? <Check className="size-3" /> : index + 1}
+                  </span>
+                  <span className={`hidden text-[11px] sm:inline ${current ? "font-medium text-white" : complete ? "text-emerald-100/70" : "text-slate-500"}`}>
+                    {step}
+                  </span>
+                </li>
+              );
+            })}
+          </ol>
+        </div>
+      </div>
 
       <div className="scrollbar-hide grid min-h-0 flex-1 grid-cols-1 gap-3 overflow-y-auto p-3 md:grid-cols-3 md:overflow-hidden md:p-4 lg:gap-4">
         <section className={cn(PANEL, "min-h-[320px] md:min-h-0")}>
-          <div className="border-b border-slate-800 px-4 py-3">
-            <h2 className="text-sm font-medium text-white">Mission board</h2>
-            <p className="text-[11px] text-slate-500">
-              Partner: {activeMission.partnerName} · drag tasks when you ship
-            </p>
+          <div className="border-b border-white/8 px-4 py-3.5">
+            <p className="text-[9px] font-semibold tracking-[0.16em] text-emerald-300/70 uppercase">01 · Shared plan</p>
+            <h2 className="mt-1 text-sm font-semibold text-white">Mission board</h2>
+            <p className="text-[11px] text-slate-500">A first-pass list to help you get moving.</p>
           </div>
           <div className="grid min-h-0 flex-1 grid-cols-2 gap-2 p-3">
             <KanbanColumn title="To Do" count={todo.length} tasks={todo} />
@@ -187,17 +239,18 @@ export function QuestWorkspace() {
         </section>
 
         <section className={cn(PANEL, "min-h-[280px] md:min-h-0")}>
-          <div className="border-b border-slate-800 px-4 py-3">
-            <h2 className="text-sm font-medium text-white">Agreed API Data Structure</h2>
+          <div className="border-b border-white/8 px-4 py-3.5">
+            <p className="text-[9px] font-semibold tracking-[0.16em] text-sky-300/70 uppercase">02 · Shared contract</p>
+            <h2 className="mt-1 text-sm font-semibold text-white">API data structure</h2>
             <p className="line-clamp-2 text-[11px] text-slate-500">{activeMission.apiContractHint}</p>
           </div>
           <div className="flex min-h-0 flex-1 flex-col p-3">
-            <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-slate-800 bg-[#050a14]/95 shadow-inner">
-              <div className="flex items-center gap-3 border-b border-slate-800 bg-slate-900/90 px-3 py-2">
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-white/8 bg-[#050a14]/95 shadow-inner">
+              <div className="flex items-center gap-3 border-b border-white/8 bg-white/[0.03] px-3 py-2">
                 <div className="flex gap-1.5" aria-hidden>
-                  <span className="size-2.5 rounded-full bg-red-500/90" />
-                  <span className="size-2.5 rounded-full bg-amber-400/90" />
-                  <span className="size-2.5 rounded-full bg-emerald-500/90" />
+                  <span className="size-2 rounded-full bg-rose-400/80" />
+                  <span className="size-2 rounded-full bg-amber-300/80" />
+                  <span className="size-2 rounded-full bg-emerald-300/80" />
                 </div>
                 <span className="truncate font-mono text-[10px] text-slate-500">contract.json — read-only</span>
               </div>
@@ -208,34 +261,35 @@ export function QuestWorkspace() {
           </div>
         </section>
 
-        <section className={cn(PANEL, "min-h-[320px] border-lime-400/15 md:min-h-0")}>
-          <div className="border-b border-slate-800 px-4 py-3">
-            <h2 className="text-sm font-medium text-white">AI Co-Pilot</h2>
-            <p className="text-[11px] text-slate-500">Third co-founder on standby</p>
+        <section className={cn(PANEL, "min-h-[320px] border-emerald-300/15 md:min-h-0")}>
+          <div className="border-b border-white/8 px-4 py-3.5">
+            <p className="text-[9px] font-semibold tracking-[0.16em] text-signal/70 uppercase">03 · Get unstuck</p>
+            <h2 className="mt-1 text-sm font-semibold text-white">AI co-pilot</h2>
+            <p className="text-[11px] text-slate-500">A thought partner for the hard parts</p>
           </div>
           <div className="scrollbar-hide min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-3">
-            <div className="flex gap-3 rounded-xl border border-lime-400/25 bg-gradient-to-r from-lime-900/20 to-transparent p-3">
-              <span className="flex size-9 shrink-0 items-center justify-center rounded-full border border-lime-400/50 bg-lime-400/10 text-lime-400 shadow-[0_0_14px_rgba(163,230,53,0.45)]">
+            <div className="flex gap-3 rounded-xl border border-signal/20 bg-gradient-to-r from-emerald-900/25 to-transparent p-3">
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-signal/30 bg-signal/[0.08] text-signal">
                 <Bot className="size-4" />
               </span>
               <div className="min-w-0">
-                <p className="text-[10px] font-medium tracking-wide text-lime-400 uppercase">AI Mentor</p>
+                <p className="text-[10px] font-medium tracking-wide text-signal uppercase">AI Mentor</p>
                 <p className="mt-1 text-sm leading-relaxed text-slate-200">{mentorLine}</p>
               </div>
             </div>
-            <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-3 text-sm text-slate-300">
+            <div className="rounded-xl border border-white/8 bg-white/[0.03] p-3 text-sm text-slate-300">
               <p className="text-[10px] text-slate-500">Mission brief</p>
               <p className="mt-1 leading-relaxed">{activeMission.apiContractHint}</p>
             </div>
           </div>
           <form
-            className="border-t border-slate-800 p-3"
+            className="border-t border-white/8 p-3"
             onSubmit={(event) => {
               event.preventDefault();
               setDraft("");
             }}
           >
-            <div className="flex items-center gap-2 rounded-full border border-slate-700 bg-slate-950/60 px-2 py-1">
+            <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-slate-950/70 px-2 py-1">
               <Input
                 value={draft}
                 onChange={(event) => setDraft(event.target.value)}
@@ -268,8 +322,8 @@ function KanbanColumn({
   return (
     <div
       className={cn(
-        "flex min-h-0 flex-col rounded-lg border border-slate-800 bg-slate-950/30 p-2",
-        accent === "done" && "border-lime-400/20",
+        "flex min-h-0 flex-col rounded-xl border border-white/[0.07] bg-black/15 p-2",
+        accent === "done" && "border-emerald-300/15",
       )}
     >
       <div className="mb-2 flex items-center justify-between px-1">
@@ -280,18 +334,14 @@ function KanbanColumn({
         {tasks.map((task) => (
           <li
             key={task.id}
-            className={cn(
-              "cursor-grab rounded-lg border border-slate-800/80 p-2.5 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg active:cursor-grabbing",
-              taskCardStyles(task.owner),
-            )}
+            className={cn("rounded-lg border border-white/[0.06] p-2.5", taskCardStyles(task.owner))}
           >
             <div className="flex items-start gap-2">
-              <GripVertical className="mt-0.5 size-3.5 shrink-0 text-slate-600" />
               <div className="min-w-0">
                 <p
                   className={cn(
                     "text-[10px] font-medium",
-                    task.owner === "a" ? "text-lime-400/90" : "text-cyan-400/90",
+                    task.owner === "a" ? "text-emerald-200/90" : "text-sky-200/90",
                   )}
                 >
                   {ownerLabel(task.owner)}

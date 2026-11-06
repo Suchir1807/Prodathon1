@@ -65,8 +65,8 @@ export default function SignupPage() {
 
   return (
     <AuthCard
-      title="Initialize account"
-      subtitle="Pick a username and secure password to join the network."
+      title="Create your account"
+      subtitle="Start with what you know. Find someone to build with."
       footer={
         <>
           Already registered? <AuthLink href="/login">Sign in</AuthLink>
@@ -75,7 +75,7 @@ export default function SignupPage() {
     >
       <form onSubmit={submitForm} className="space-y-4" noValidate>
         <div className="space-y-2">
-          <Label htmlFor="username" className="text-slate-300">
+          <Label htmlFor="username" className="text-foreground">
             Username
           </Label>
           <Input
@@ -84,15 +84,15 @@ export default function SignupPage() {
             aria-invalid={Boolean(errors.username)}
             aria-describedby={errors.username ? "signup-username-error" : undefined}
             {...register("username")}
-            className={`h-10 border-white/10 bg-black/30 ${errors.username ? "border-rose-500/70 focus-visible:ring-rose-500/30" : ""}`}
+            className={errors.username ? "border-destructive focus-visible:ring-destructive/30" : ""}
           />
-          {errors.username ? <p id="signup-username-error" className="text-xs font-mono text-rose-500">{errors.username.message}</p> : null}
+          {errors.username ? <p id="signup-username-error" className="text-xs text-destructive">{errors.username.message}</p> : null}
           <p className="text-xs text-slate-500">
             3–32 characters; letters, numbers, underscores.
           </p>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="password" className="text-slate-300">
+          <Label htmlFor="password" className="text-foreground">
             Password
           </Label>
           <PasswordInput
@@ -101,13 +101,13 @@ export default function SignupPage() {
             invalid={Boolean(errors.password)}
             aria-describedby={errors.password ? "signup-password-error" : undefined}
             {...register("password")}
-            className="h-10 border-white/10 bg-black/30"
+            className="border-input"
           />
-          {errors.password ? <p id="signup-password-error" className="text-xs font-mono text-rose-500">{errors.password.message}</p> : null}
+          {errors.password ? <p id="signup-password-error" className="text-xs text-destructive">{errors.password.message}</p> : null}
           <PasswordStrength password={password} />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="confirm" className="text-slate-300">
+          <Label htmlFor="confirm" className="text-foreground">
             Confirm password
           </Label>
           <PasswordInput
@@ -116,12 +116,12 @@ export default function SignupPage() {
             invalid={Boolean(errors.confirm)}
             aria-describedby={errors.confirm ? "signup-confirm-error" : undefined}
             {...register("confirm")}
-            className="h-10 border-white/10 bg-black/30"
+            className="border-input"
           />
-          {errors.confirm ? <p id="signup-confirm-error" className="text-xs font-mono text-rose-500">{errors.confirm.message}</p> : null}
+          {errors.confirm ? <p id="signup-confirm-error" className="text-xs text-destructive">{errors.confirm.message}</p> : null}
         </div>
         {error ? (
-          <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
             {error}
           </p>
         ) : null}

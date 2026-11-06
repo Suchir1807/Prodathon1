@@ -66,8 +66,8 @@ export default function LoginPage() {
 
   return (
     <AuthCard
-      title="Access Skillin"
-      subtitle="Sign in with your username and password."
+      title="Welcome back"
+      subtitle="Sign in to pick up where your next build begins."
       footer={
         <>
           No account yet? <AuthLink href="/signup">Create one</AuthLink>
@@ -76,7 +76,7 @@ export default function LoginPage() {
     >
       <form onSubmit={submitForm} className="space-y-4" noValidate>
         <div className="space-y-2">
-          <Label htmlFor="username" className="text-slate-300">
+          <Label htmlFor="username" className="text-foreground">
             Username
           </Label>
           <Input
@@ -85,12 +85,12 @@ export default function LoginPage() {
             aria-invalid={Boolean(errors.username)}
             aria-describedby={errors.username ? "login-username-error" : undefined}
             {...register("username")}
-            className={`h-10 border-white/10 bg-black/30 ${errors.username ? "border-rose-500/70 focus-visible:ring-rose-500/30" : ""}`}
+            className={errors.username ? "border-destructive focus-visible:ring-destructive/30" : ""}
           />
-          {errors.username ? <p id="login-username-error" className="text-xs font-mono text-rose-500">{errors.username.message}</p> : null}
+          {errors.username ? <p id="login-username-error" className="text-xs text-destructive">{errors.username.message}</p> : null}
         </div>
         <div className="space-y-2">
-          <Label htmlFor="password" className="text-slate-300">
+          <Label htmlFor="password" className="text-foreground">
             Password
           </Label>
           <PasswordInput
@@ -99,12 +99,12 @@ export default function LoginPage() {
             invalid={Boolean(errors.password)}
             aria-describedby={errors.password ? "login-password-error" : undefined}
             {...register("password")}
-            className="h-10 border-white/10 bg-black/30"
+            className="border-input"
           />
-          {errors.password ? <p id="login-password-error" className="text-xs font-mono text-rose-500">{errors.password.message}</p> : null}
+          {errors.password ? <p id="login-password-error" className="text-xs text-destructive">{errors.password.message}</p> : null}
         </div>
         {error ? (
-          <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
             {error}
           </p>
         ) : null}

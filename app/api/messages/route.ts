@@ -3,8 +3,9 @@ import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 
 import { authOptions } from "@/lib/auth";
+import { findAuthorizedSessionRoom } from "@/lib/authorized-session-room";
 import connectDB from "@/lib/mongodb";
-import { findAuthorizedWorkspace } from "@/lib/authorized-workspace";
+import { messageCreateSchema } from "@/lib/validation/schemas";
 import Message from "@/models/Message";
 import User from "@/models/User";
 
@@ -42,32 +43,32 @@ export async function GET(request: Request) {
 
   try {
     await connectDB();
-    const workspaceId = new URL(request.url).searchParams.get("workspaceId");
-    if (workspaceId !== null) {
-      if (!workspaceId) {
-        return NextResponse.json({ error: "Invalid workspaceId." }, { status: 400 });
+    const sessionRoomId = new URL(request.url).searchParams.get("sessionRoomId");
+    if (sessionRoomId !== null) {
+      if (!sessionRoomId) {
+        return NextResponse.json({ error: "Invalid sessionRoomId." }, { status: 400 });
       }
-      const access = await findAuthorizedWorkspace(workspaceId, true);
+      const access = await findAuthorizedSessionRoom(sessionRoomId);
       if ("error" in access) {
         return NextResponse.json({ error: access.error }, { status: access.status });
       }
 
-      const partnerId = access.workspace.users.find(
+      const partnerId = access.room.members.find(
         (userId) => userId.toString() !== access.current._id.toString(),
       );
       if (!partnerId) {
-        return NextResponse.json({ error: "Workspace partner not found." }, { status: 404 });
+        return NextResponse.json({ error: "Session partner not found." }, { status: 404 });
       }
 
       const partner = await User.findById(partnerId)
         .select("_id username displayName")
         .lean();
       if (!partner) {
-        return NextResponse.json({ error: "Workspace partner not found." }, { status: 404 });
+        return NextResponse.json({ error: "Session partner not found." }, { status: 404 });
       }
 
       const messages = await Message.find({
-        workspaceId: access.workspace._id,
+        sessionRoomId: access.room._id,
         $or: [
           { senderId: access.current._id, receiverId: partnerId },
           { senderId: partnerId, receiverId: access.current._id },
@@ -139,23 +140,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  let body: { receiverId?: unknown; content?: unknown; workspaceId?: unknown };
+  let body: unknown;
   try {
-    body = (await request.json()) as { receiverId?: unknown; content?: unknown };
+    body = await request.json();
   } catch {
     return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
   }
-
-  const { receiverId, content } = body;
-  if (typeof receiverId !== "string" || !mongoose.Types.ObjectId.isValid(receiverId)) {
-    return NextResponse.json({ error: "A valid receiverId is required." }, { status: 400 });
-  }
-  if (typeof content !== "string" || !content.trim() || content.trim().length > 5000) {
-    return NextResponse.json({ error: "Message content must be between 1 and 5000 characters." }, { status: 400 });
-  }
-  if (body.workspaceId !== undefined && typeof body.workspaceId !== "string") {
-    return NextResponse.json({ error: "Invalid workspaceId." }, { status: 400 });
-  }
+  const parsed = messageCreateSchema.safeParse(body);
+  if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid message." }, { status: 400 });
+  const { receiverId, content, sessionRoomId, idempotencyKey } = parsed.data;
 
   try {
     await connectDB();
@@ -163,23 +156,23 @@ export async function POST(request: Request) {
     if (!current) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
     let authorizedReceiverId: typeof current._id;
-    let messageWorkspaceId: mongoose.Types.ObjectId | undefined;
-    if (typeof body.workspaceId === "string") {
-      const access = await findAuthorizedWorkspace(body.workspaceId, true);
+    let messageRoomId: mongoose.Types.ObjectId | undefined;
+    if (sessionRoomId) {
+      const access = await findAuthorizedSessionRoom(sessionRoomId);
       if ("error" in access) {
         return NextResponse.json({ error: access.error }, { status: access.status });
       }
       if (current._id.toString() !== access.current._id.toString()) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       }
-      const partnerId = access.workspace.users.find(
+      const partnerId = access.room.members.find(
         (userId) => userId.toString() !== access.current._id.toString(),
       );
       if (!partnerId || partnerId.toString() !== receiverId) {
-        return NextResponse.json({ error: "Receiver is not a member of this workspace." }, { status: 403 });
+        return NextResponse.json({ error: "Receiver is not a member of this SessionRoom." }, { status: 403 });
       }
       authorizedReceiverId = partnerId;
-      messageWorkspaceId = access.workspace._id;
+      messageRoomId = access.room._id;
     } else {
       const target = await User.findById(receiverId).select("_id following").lean();
       if (!target) return NextResponse.json({ error: "User not found" }, { status: 404 });
@@ -195,8 +188,9 @@ export async function POST(request: Request) {
     const message = await Message.create({
       senderId: current._id,
       receiverId: authorizedReceiverId,
-      ...(messageWorkspaceId ? { workspaceId: messageWorkspaceId } : {}),
+      ...(messageRoomId ? { sessionRoomId: messageRoomId } : {}),
       content: content.trim(),
+      ...(idempotencyKey ? { idempotencyKey } : {}),
     });
     return NextResponse.json({
       id: message._id.toString(),

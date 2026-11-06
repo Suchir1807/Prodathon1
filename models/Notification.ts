@@ -2,21 +2,24 @@ import mongoose, { type Model, Schema, Types } from "mongoose";
 
 export type NotificationType =
   | "follow"
-  | "partner_request"
-  | "request_accepted"
-  | "quest_ready"
-  | "task_completed"
+  | "exchange_invite"
+  | "exchange_started"
+  | "ask_matched"
+  | "session_booked"
+  | "session_reminder"
+  | "session_completed"
   | "new_message"
-  | "curveball_unlocked"
-  | "submission"
-  | "review";
+  | "session_review";
 
 export interface INotification {
   recipient: Types.ObjectId;
   sender: Types.ObjectId;
   type: NotificationType;
   isRead: boolean;
-  questId?: Types.ObjectId;
+  exchangeId?: Types.ObjectId;
+  sessionId?: Types.ObjectId;
+  askId?: Types.ObjectId;
+  sessionRoomId?: Types.ObjectId;
   resourceId?: Types.ObjectId;
   dedupeKey?: string;
   createdAt: Date;
@@ -31,19 +34,22 @@ const NotificationSchema = new Schema<INotification>(
       type: String,
       enum: [
         "follow",
-        "partner_request",
-        "request_accepted",
-        "quest_ready",
-        "task_completed",
+        "exchange_invite",
+        "exchange_started",
+        "ask_matched",
+        "session_booked",
+        "session_reminder",
+        "session_completed",
         "new_message",
-        "curveball_unlocked",
-        "submission",
-        "review",
+        "session_review",
       ],
       default: "follow",
       required: true,
     },
-    questId: { type: Schema.Types.ObjectId, ref: "Quest" },
+    exchangeId: { type: Schema.Types.ObjectId, ref: "Exchange" },
+    sessionId: { type: Schema.Types.ObjectId, ref: "Session" },
+    askId: { type: Schema.Types.ObjectId, ref: "Ask" },
+    sessionRoomId: { type: Schema.Types.ObjectId, ref: "SessionRoom" },
     resourceId: { type: Schema.Types.ObjectId },
     dedupeKey: { type: String, maxlength: 180 },
     isRead: { type: Boolean, default: false, required: true },

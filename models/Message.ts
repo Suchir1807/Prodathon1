@@ -4,7 +4,7 @@ export interface IMessage {
   senderId: Types.ObjectId;
   receiverId: Types.ObjectId;
   workspaceId?: Types.ObjectId;
-  questId?: Types.ObjectId;
+  sessionRoomId?: Types.ObjectId;
   content: string;
   timestamp: Date;
   readAt?: Date | null;
@@ -28,7 +28,7 @@ const MessageSchema = new Schema<IMessage>(
       ref: "Workspace",
       index: true,
     },
-    questId: { type: Schema.Types.ObjectId, ref: "Quest", index: true },
+    sessionRoomId: { type: Schema.Types.ObjectId, ref: "SessionRoom", index: true },
     content: { type: String, required: true },
     timestamp: { type: Date, default: Date.now },
     readAt: { type: Date, default: null },
@@ -39,10 +39,14 @@ const MessageSchema = new Schema<IMessage>(
 
 MessageSchema.index({ senderId: 1, receiverId: 1, timestamp: 1 });
 MessageSchema.index({ workspaceId: 1, senderId: 1, receiverId: 1, timestamp: 1 });
-MessageSchema.index({ questId: 1, timestamp: 1 });
+MessageSchema.index({ sessionRoomId: 1, timestamp: 1 });
 MessageSchema.index(
-  { questId: 1, senderId: 1, idempotencyKey: 1 },
-  { unique: true, partialFilterExpression: { idempotencyKey: { $type: "string" } }, name: "quest_message_idempotency" },
+  { senderId: 1, idempotencyKey: 1 },
+  { unique: true, partialFilterExpression: { idempotencyKey: { $type: "string" } }, name: "message_idempotency" },
+);
+MessageSchema.index(
+  { sessionRoomId: 1, senderId: 1, idempotencyKey: 1 },
+  { unique: true, partialFilterExpression: { idempotencyKey: { $type: "string" } }, name: "session_room_message_idempotency" },
 );
 
 const Message: Model<IMessage> =

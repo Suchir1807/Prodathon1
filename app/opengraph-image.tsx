@@ -47,21 +47,21 @@ export default function OpenGraphImage() {
             SKILLIN
           </div>
           <div style={{ display: "flex", flexDirection: "column", marginTop: 54, fontSize: 70, lineHeight: 1.06, fontWeight: 700, letterSpacing: -3 }}>
-            Build better,
+            Teach what you know.
             <br />
-            <span style={{ color: "#d9f36a" }}>together.</span>
+            <span style={{ color: "#d9f36a" }}>Learn from anyone.</span>
           </div>
           <div style={{ marginTop: 26, maxWidth: 820, color: "#b2beb3", fontSize: 25, lineHeight: 1.4 }}>
-            Find your people. Take on a 3-day quest. Ship something worth sharing.
+            Teach what you know, earn time credits, and learn anything from anyone.
           </div>
           <div style={{ display: "flex", gap: 14, marginTop: 42, color: "#8da093", fontSize: 17 }}>
-            <span>01 Match</span>
+            <span>01 Offer & Want</span>
             <span>→</span>
-            <span>02 Quest</span>
+            <span>02 Match or Ask</span>
             <span>→</span>
-            <span>03 Build</span>
+            <span>03 Book a Session</span>
             <span>→</span>
-            <span>04 Showcase</span>
+            <span>04 Learn & Teach · Review & Grow</span>
           </div>
         </div>
       </div>

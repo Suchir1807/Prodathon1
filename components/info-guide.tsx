@@ -5,13 +5,11 @@ import {
   ArrowDown,
   ArrowRight,
   BadgeCheck,
-  Bot,
   ChartNoAxesCombined,
   Clock3,
   Code2,
   MessageSquareText,
   NotebookPen,
-  Radio,
   UsersRound,
   Workflow,
 } from "lucide-react";
@@ -20,78 +18,78 @@ import { motion } from "framer-motion";
 const GUIDE_CARDS = [
   {
     number: "01",
-    title: "The Live ID Card",
-    eyebrow: "Your builder profile",
+    title: "Offer & Want",
+    eyebrow: "Your Skill Passport",
     description:
-      "Your profile is your signal to the network. Set up your Skill Graph so Skillin can understand what you know, what you want to learn, and match you with the right collaborators.",
+      "Share the skills you can teach and the skills you want to learn. Your Skill Passport helps peers find a useful, complementary exchange.",
     details: [
-      "Sprints tracks the builds you have taken on.",
-      "Followers and Following show your growing builder network.",
+      "Keep your offered and wanted skills up to date.",
+      "Earn verified skill badges through peer reviews.",
     ],
     icon: ChartNoAxesCombined,
     accent: "emerald",
     href: "/profile",
-    linkLabel: "Complete your profile",
+    linkLabel: "Edit your Skill Passport",
   },
   {
     number: "02",
-    title: "Emergency Beacons",
-    eyebrow: "Find help, fast",
+    title: "Match or Ask",
+    eyebrow: "Find your learning partner",
     description:
-      "When you need a collaborator now, activate a beacon. It pings local developers in Bengaluru so nearby builders can respond and turn an idea into immediate, real-world collaboration.",
+      "Find a peer with complementary skills, or publish an Ask that explains what you can offer and want to learn.",
     details: [
-      "Share what you need and connect with local talent.",
-      "Meet and make progress together, in person.",
+      "Compare overlapping interests and useful skill swaps.",
+      "Accept an Ask to start an ongoing Exchange.",
     ],
-    icon: Radio,
+    icon: UsersRound,
     accent: "cyan",
-    href: "/dashboard",
-    linkLabel: "Open your dashboard",
+    href: "/find-partners",
+    linkLabel: "Find a partner",
   },
   {
     number: "03",
-    title: "Flash Builds",
-    eyebrow: "Ship under pressure",
+    title: "Book a Session",
+    eyebrow: "Make time to learn",
     description:
-      "Take on a focused sprint with a strict 12-hour countdown. The clock is part of the challenge: you earn the Sprint badge only when you beat the timer and finish in time.",
+      "Choose a topic, partner, time, and duration. Your time credits reserve the learner's place and reward the teacher when the Session is complete.",
     details: [
-      "Pair up around a concrete build goal.",
-      "Finish before the countdown expires to claim your badge.",
+      "One time credit represents one minute of learning.",
+      "Cancel a scheduled Session to return reserved credits.",
     ],
     icon: Clock3,
     accent: "amber",
-    href: "/sprint",
-    linkLabel: "Explore Flash Builds",
+    href: "/sessions",
+    linkLabel: "View Sessions",
   },
   {
     number: "04",
-    title: "Productivity Workspace",
-    eyebrow: "Everything in one place",
+    title: "Learn & Teach",
+    eyebrow: "An ongoing Exchange",
     description:
-      "Every collaboration gets a shared workspace designed to keep the work moving, without switching between a pile of disconnected tools.",
+      "Keep a shared weekly goal, meet regularly, and use your SessionRoom for private chat and shared notes.",
     details: [
-      "Capture plans and notes in the shared Markdown scratchpad.",
-      "Talk in the live partner chat dock and move work across the drag-and-drop Kanban board.",
+      "Pause or end an Exchange whenever your rhythm changes.",
+      "Keep Session notes and messages with the partnership.",
     ],
     icon: Workflow,
     accent: "violet",
-    href: "/workspace",
-    linkLabel: "Open your workspace",
+    href: "/exchanges",
+    linkLabel: "Manage Exchanges",
   },
   {
     number: "05",
-    title: "Gemini AI Accelerate",
-    eyebrow: "A native AI teammate",
+    title: "Review & Grow",
+    eyebrow: "Recognize what you learn",
     description:
-      "Use the native Gemini AI assistant right inside your workspace to explore architecture choices, unblock decisions, and generate code as you build with your partner.",
+      "After a completed Session, leave thoughtful feedback and recognize skills your partner shared. Reviews contribute verified badges to the Skill Passport.",
     details: [
-      "Get help reasoning through system design.",
-      "Generate code without leaving your collaboration flow.",
+      "Rate the experience and leave useful feedback.",
+      "Make learning progress visible to your community.",
     ],
-    icon: Bot,
+    icon: BadgeCheck,
     accent: "fuchsia",
-    href: "/workspace",
-    linkLabel: "Build with your partner",
+    href: "/profile",
+    linkLabel: "View your Skill Passport",
   },
 ] as const;
 
@@ -148,8 +146,7 @@ export function InfoGuide() {
               </span>
             </h1>
             <p className="mt-3 max-w-xl text-sm leading-6 text-slate-300">
-              From finding your people to shipping together, here is your
-              command center for turning skills into real builds.
+              Offer & Want → Match or Ask → Book a Session → Learn & Teach → Review & Grow.
             </p>
             <a
               href="#the-platform"
@@ -167,8 +164,8 @@ export function InfoGuide() {
             </div>
             <div className="rounded-xl border border-white/10 bg-black/25 p-3.5 backdrop-blur-md">
               <Code2 className="size-4 text-cyan-300" />
-              <p className="mt-2 text-[11px] font-medium text-white">Build together</p>
-              <p className="mt-1 text-[10px] text-slate-500">Tools in one workspace</p>
+              <p className="mt-2 text-[11px] font-medium text-white">Learn & teach</p>
+              <p className="mt-1 text-[10px] text-slate-500">A peer-led exchange</p>
             </div>
           </div>
         </div>
@@ -181,11 +178,11 @@ export function InfoGuide() {
               The playbook
             </p>
             <h2 id="guide-heading" className="mt-1 text-lg font-semibold tracking-tight">
-              Your path from signal to shipping
+              The Skillin learning loop
             </h2>
           </div>
           <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[10px] text-slate-400">
-            5 ways to build on Skillin
+            5 steps to grow with Skillin
           </span>
         </div>
 
@@ -260,7 +257,7 @@ export function InfoGuide() {
           <div>
             <h2 className="text-sm font-semibold text-white">Ready to make your next move?</h2>
             <p className="mt-1 text-xs leading-5 text-slate-400">
-              Set up your Skill Graph, meet your collaborators, and start building.
+              Set up your Skill Passport, meet a learning partner, and start exchanging knowledge.
             </p>
           </div>
         </div>

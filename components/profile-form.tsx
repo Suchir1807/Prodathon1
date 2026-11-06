@@ -49,7 +49,7 @@ export function OnboardingForm() {
 
   const [draft, setDraft] = useState<Profile>({ ...EMPTY_PROFILE });
   const [socialStats, setSocialStats] = useState<ProfileSocialStats>({
-    sprints: 0,
+    sessions: 0,
     followers: 0,
     following: 0,
   });
@@ -86,14 +86,14 @@ export function OnboardingForm() {
         }
 
         if (data.isProfileComplete) {
-          router.replace("/workspace");
+          router.replace("/dashboard");
           return;
         }
 
         if (!cancelled) {
           setDraft(apiToProfile(data));
           setSocialStats({
-            sprints: socialCount(data.socialStats?.sprints),
+            sessions: socialCount(data.socialStats?.sessions),
             followers: socialCount(data.socialStats?.followers),
             following: socialCount(data.socialStats?.following),
           });

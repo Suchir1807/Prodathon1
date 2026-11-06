@@ -29,31 +29,28 @@ export const metadata: Metadata = {
       (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000"),
   ),
   title: {
-    default: "Skillin",
+    default: "Skillin — Peer-to-peer skill exchange",
     template: "%s · Skillin",
   },
-  description:
-    "Peer-to-peer skill exchange. Match with a partner and ship a 3-day collaborative quest.",
+  description: "A peer-to-peer skill exchange where you teach what you know, earn time credits, and learn anything from anyone.",
   applicationName: "Skillin",
   openGraph: {
-    title: "Skillin — Build better, together",
-    description:
-      "Find a complementary collaborator, take on a focused quest, and ship something worth sharing.",
+    title: "Skillin — Teach what you know. Learn what you want.",
+    description: "A peer-to-peer skill exchange where you teach what you know, earn time credits, and learn anything from anyone.",
     siteName: "Skillin",
     type: "website",
-    images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "Skillin — Build better, together" }],
+    images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "Skillin — Teach what you know. Learn what you want." }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Skillin — Build better, together",
-    description:
-      "Find a complementary collaborator, take on a focused quest, and ship something worth sharing.",
+    title: "Skillin — Teach what you know. Learn what you want.",
+    description: "A peer-to-peer skill exchange where you teach what you know, earn time credits, and learn anything from anyone.",
     images: ["/opengraph-image"],
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#07110c",
+  themeColor: "#020617",
   colorScheme: "dark",
 };
 

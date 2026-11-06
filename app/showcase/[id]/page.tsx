@@ -1,17 +1,10 @@
-import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
-import { PublicShowcase } from "@/components/public-showcase";
-
-export const metadata: Metadata = {
-  title: "Completed Quest | Skillin",
-  description: "A verified student collaboration, from matched skills to a shipped build.",
-};
-
-export default async function PublicShowcasePage({
+export default async function LegacyShowcaseIdRedirect({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  return <PublicShowcase id={id} />;
+  redirect(`/profile/${encodeURIComponent(id)}`);
 }

@@ -66,7 +66,7 @@ export default function SignupPage() {
   return (
     <AuthCard
       title="Create your account"
-      subtitle="Start with what you know. Find someone to build with."
+      subtitle="Start with what you know. Find someone ready to learn from you."
       footer={
         <>
           Already registered? <AuthLink href="/login">Sign in</AuthLink>

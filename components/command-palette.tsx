@@ -5,15 +5,15 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   ArrowRight,
+  Clock3,
   Command,
   Compass,
+  CircleHelp,
+  Handshake,
   LayoutDashboard,
   MessageSquare,
-  PanelsTopLeft,
   Search,
-  Sparkles,
   UsersRound,
-  Zap,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -27,13 +27,13 @@ import {
 import { Input } from "@/components/ui/input";
 
 const COMMANDS = [
-  { href: "/dashboard", label: "Dashboard", detail: "Your build network", icon: LayoutDashboard },
-  { href: "/find-partners", label: "Find partners", detail: "Meet a complementary builder", icon: UsersRound },
-  { href: "/workspace", label: "Quest workspace", detail: "Continue your collaboration", icon: PanelsTopLeft },
-  { href: "/sprint", label: "Flash Build", detail: "Find a sprint partner", icon: Zap },
+  { href: "/dashboard", label: "Dashboard", detail: "Your learning network", icon: LayoutDashboard },
+  { href: "/profile", label: "Skill Passport", detail: "Manage what you offer and want", icon: Compass },
+  { href: "/find-partners", label: "Find partners", detail: "Match by complementary skills", icon: UsersRound },
+  { href: "/asks", label: "Asks", detail: "Find or publish a skill Ask", icon: CircleHelp },
+  { href: "/exchanges", label: "Exchanges", detail: "Manage ongoing partnerships", icon: Handshake },
+  { href: "/sessions", label: "Sessions", detail: "Book time and earn credits", icon: Clock3 },
   { href: "/messages", label: "Messages", detail: "Catch up with your people", icon: MessageSquare },
-  { href: "/profile", label: "Your profile", detail: "Update your skill graph", icon: Compass },
-  { href: "/showcase", label: "Showcase", detail: "Share a build story", icon: Sparkles },
   { href: "/info", label: "How it works", detail: "Explore the Skillin loop", icon: ArrowRight },
 ] as const;
 

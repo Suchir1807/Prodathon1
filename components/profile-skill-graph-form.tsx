@@ -246,7 +246,7 @@ export function ProfileSkillGraphForm({
         /> : null}
         {(!isOnboarding || onboardingStep === 1) ? <SkillSection
           title="Skills I Want to Learn"
-          description="What you want the quest to make you practice."
+          description="What you would like to learn from another member."
           options={SKILLS_I_WANT}
           selected={live.skillsLearn}
           onToggle={(value) => {
@@ -257,7 +257,7 @@ export function ProfileSkillGraphForm({
         /> : null}
         {(!isOnboarding || onboardingStep === 1) ? <SkillSection
           title="Domain Interests"
-          description="The kinds of products you actually want to build."
+          description="The areas where you are excited to share skills and learn."
           options={DOMAIN_INTERESTS}
           selected={live.domainInterests}
           onToggle={(value) => {

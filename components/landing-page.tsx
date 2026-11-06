@@ -8,7 +8,6 @@ import {
   Blocks,
   Check,
   Code2,
-  Compass,
   Hexagon,
   Layers3,
   Network,
@@ -23,26 +22,26 @@ import { Button } from "@/components/ui/button";
 const STEPS = [
   {
     number: "01",
-    title: "Match",
-    description: "Meet a student whose strengths complement yours.",
+    title: "Offer & Want",
+    description: "Share what you can teach and what you want to learn.",
     icon: UsersRound,
   },
   {
     number: "02",
-    title: "Quest",
-    description: "Pick a small, specific idea with a clear finish line.",
-    icon: Compass,
+    title: "Match or Ask",
+    description: "Find a learning partner or post a specific Ask.",
+    icon: Sparkles,
   },
   {
     number: "03",
-    title: "Build",
-    description: "Trade knowledge as you make something together.",
+    title: "Book a Session",
+    description: "Choose a time and learn together, one session at a time.",
     icon: Code2,
   },
   {
     number: "04",
-    title: "Showcase",
-    description: "Share the result and the skills you brought to it.",
+    title: "Learn & Teach",
+    description: "Exchange skills, earn time credits, and grow your Passport.",
     icon: ArrowUpRight,
   },
 ];
@@ -97,21 +96,21 @@ export function LandingPage() {
           >
             <p className="inline-flex items-center gap-2 rounded-full border border-emerald-300/15 bg-emerald-300/[0.06] px-3 py-1.5 text-[10px] font-semibold tracking-[0.13em] text-emerald-200/85 uppercase">
               <span className="size-1.5 rounded-full bg-emerald-300 shadow-[0_0_10px_rgba(110,231,183,0.8)]" />
-              A peer-powered build network for students
+              A peer-powered skill exchange
             </p>
             <h1 className="mt-6 font-heading text-[clamp(2.75rem,7vw,5.5rem)] leading-[0.99] font-semibold tracking-[-0.06em] text-white">
-              Skills grow faster when you{" "}
+              Learn anything from{" "}
               <span className="bg-gradient-to-r from-signal via-emerald-200 to-emerald-300 bg-clip-text text-transparent">
-                ship together.
+                anyone.
               </span>
             </h1>
             <p className="mt-6 max-w-xl text-sm leading-6 text-slate-300 sm:text-base sm:leading-7">
-              Find a collaborator who complements your strengths. Turn one shared idea into a focused 3-day quest—and a project you can actually show.
+              Teach what you know, earn time credits, and learn what you want from people who are excited to share what they know.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <Button asChild size="lg" className="h-11 px-5">
                 <Link href="/signup">
-                  Find your build partner
+                  Find a learning partner
                   <ArrowRight />
                 </Link>
               </Button>
@@ -129,11 +128,11 @@ export function LandingPage() {
               </span>
               <span className="inline-flex items-center gap-2">
                 <Check className="size-3.5 text-emerald-300" />
-                Keep the project
+                Earn time credits
               </span>
               <span className="inline-flex items-center gap-2">
                 <Check className="size-3.5 text-emerald-300" />
-                Share what you ship
+                Grow your Skill Passport
               </span>
             </div>
           </motion.div>
@@ -151,13 +150,13 @@ export function LandingPage() {
               className="mb-9 flex flex-wrap items-end justify-between gap-5"
             >
               <div>
-                <p className="text-[10px] font-semibold tracking-[0.18em] text-signal/80 uppercase">A simple loop, real momentum</p>
+                <p className="text-[10px] font-semibold tracking-[0.18em] text-signal/80 uppercase">A simple loop, shared growth</p>
                 <h2 className="mt-2 max-w-xl font-heading text-3xl font-semibold tracking-tight text-white sm:text-4xl">
-                  From first hello to something shipped.
+                  Give a little. Learn a lot.
                 </h2>
               </div>
               <p className="max-w-sm text-xs leading-5 text-slate-400 sm:text-sm">
-                No endless planning. Just the right people, a clear scope, and room to learn by doing.
+                Your time and experience have value. Trade them for the skills you want to grow.
               </p>
             </motion.div>
 
@@ -194,12 +193,12 @@ export function LandingPage() {
         <section id="why-skillin" className="scroll-mt-8 mx-auto max-w-7xl px-5 py-16 sm:px-8 sm:py-20 lg:px-10">
           <div className="grid gap-10 lg:grid-cols-[0.78fr_1.22fr] lg:gap-16">
             <div className="max-w-md">
-              <p className="text-[10px] font-semibold tracking-[0.18em] text-emerald-200/75 uppercase">Better than building alone</p>
+              <p className="text-[10px] font-semibold tracking-[0.18em] text-emerald-200/75 uppercase">Better than learning alone</p>
               <h2 className="mt-3 font-heading text-3xl font-semibold tracking-tight text-white sm:text-4xl">
                 Trade skills. Not just links.
               </h2>
               <p className="mt-4 text-sm leading-6 text-slate-400">
-                Skillin makes collaboration the learning path. Bring what you know, meet someone with a different edge, and leave with a shared result.
+                Skillin makes knowledge reciprocal. Teach a skill you know, learn something new, and recognize the people who helped you grow.
               </p>
               <Link
                 href="/info"
@@ -212,22 +211,22 @@ export function LandingPage() {
             <div className="grid gap-3 sm:grid-cols-2">
               <Feature
                 icon={Network}
-                label="01 / Find your people"
+                label="01 / Trade knowledge"
                 title="Skills that fit together"
-                description="Show what you can do and what you want to learn. Find a collaborator who brings a complementary point of view."
+                description="Show what you can teach and what you want to learn. Find a peer whose skills create a meaningful exchange."
                 className="sm:row-span-2"
               />
               <Feature
                 icon={Zap}
-                label="02 / Make it manageable"
-                title="A 3-day quest"
-                description="Keep the scope small, the deadline clear, and the momentum real."
+                label="02 / Value your time"
+                title="Time credits"
+                description="Earn credits by teaching and spend them to learn. One credit represents one minute."
               />
               <Feature
                 icon={Layers3}
-                label="03 / Stay in the flow"
-                title="One shared workspace"
-                description="Plan, track tasks, chat, and keep notes together while you build."
+                label="03 / Keep growing"
+                title="Sessions that add up"
+                description="Meet on a weekly rhythm, share notes, and grow your Skill Passport with peer reviews."
               />
             </div>
           </div>
@@ -238,12 +237,12 @@ export function LandingPage() {
             <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_80%_0%,rgba(217,243,106,0.12),transparent_42%),radial-gradient(ellipse_at_0%_100%,rgba(16,185,129,0.1),transparent_45%)]" />
             <div className="flex flex-col items-start justify-between gap-7 sm:flex-row sm:items-center">
               <div className="max-w-xl">
-                <p className="text-[10px] font-semibold tracking-[0.18em] text-signal/80 uppercase">Your next project can start here</p>
+                <p className="text-[10px] font-semibold tracking-[0.18em] text-signal/80 uppercase">Your next learning exchange starts here</p>
                 <h2 className="mt-2 font-heading text-2xl font-semibold tracking-tight text-white sm:text-3xl">
-                  Bring a skill. Leave with a story.
+                  Teach what you know. Learn what you want.
                 </h2>
                 <p className="mt-3 text-sm leading-6 text-slate-400">
-                  Create your profile, find your people, and start making something real.
+                  Create your Skill Passport, meet a learning partner, and start exchanging time and skills.
                 </p>
               </div>
               <Button asChild size="lg" className="h-11 shrink-0 px-5">
@@ -260,7 +259,7 @@ export function LandingPage() {
             <Hexagon className="size-3.5 text-emerald-300" />
             Skillin
           </Link>
-          <p>Learn together. Make something that matters.</p>
+          <p>Offer & Want → Match or Ask → Book a Session → Learn & Teach → Review & Grow.</p>
           <div className="flex items-center gap-4">
             <Link href="/info" className="transition hover:text-white">How it works</Link>
             <Link href="/login" className="transition hover:text-white">Sign in</Link>
@@ -278,7 +277,7 @@ function MatchPreview() {
       animate={{ opacity: 1, scale: 1, y: 0 }}
       transition={{ duration: 0.65, delay: 0.1, ease: "easeOut" }}
       className="relative mx-auto w-full min-w-0 max-w-[590px]"
-      aria-label="Illustration of complementary skills coming together in a three-day build"
+      aria-label="Illustration of two peers exchanging skills and booking a learning session"
       role="img"
     >
       <div aria-hidden="true" className="pointer-events-none absolute inset-8 rounded-full bg-emerald-400/[0.08] blur-3xl" />
@@ -287,7 +286,7 @@ function MatchPreview() {
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-[9px] font-semibold tracking-[0.18em] text-emerald-200/70 uppercase">A better kind of match</p>
-            <h2 className="mt-1 text-sm font-semibold text-white">Different strengths. One build.</h2>
+            <h2 className="mt-1 text-sm font-semibold text-white">Different strengths. Shared growth.</h2>
           </div>
           <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-300/15 bg-emerald-300/[0.06] px-2.5 py-1.5 text-[9px] font-medium text-emerald-100">
             <Sparkles className="size-3" />
@@ -348,22 +347,21 @@ function MatchPreview() {
                 <Zap className="size-3.5" />
               </span>
               <div>
-                <p className="text-[9px] font-semibold tracking-[0.12em] text-slate-500 uppercase">Your 3-day quest</p>
-                <p className="mt-0.5 text-xs font-medium text-slate-200">Prototype a campus event finder</p>
+                <p className="text-[9px] font-semibold tracking-[0.12em] text-slate-500 uppercase">Your next Session</p>
+                <p className="mt-0.5 text-xs font-medium text-slate-200">Practice product discovery together</p>
               </div>
             </div>
             <span className="rounded-full border border-white/10 px-2.5 py-1 text-[9px] text-slate-400">A small scope. A real outcome.</span>
           </div>
-          <div className="mt-4 grid grid-cols-3 gap-2">
-            {["Align", "Build", "Showcase"].map((stage, index) => (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {["Offer & Want", "Match or Ask", "Book", "Learn & Teach", "Review & Grow"].map((stage, index) => (
               <div key={stage} className="relative">
-                <div className="mb-2 flex items-center gap-1.5">
-                  <span className={`grid size-5 place-items-center rounded-full border text-[9px] ${index === 0 ? "border-emerald-300/30 bg-emerald-300/10 text-emerald-100" : "border-white/10 text-slate-500"}`}>
-                    {index === 0 ? <Check className="size-3" /> : index + 1}
+                <div className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.025] px-2 py-1.5">
+                  <span className={`grid size-4 place-items-center rounded-full border text-[8px] ${index === 0 ? "border-emerald-300/30 bg-emerald-300/10 text-emerald-100" : "border-white/10 text-slate-500"}`}>
+                    {index + 1}
                   </span>
-                  <span className={`text-[9px] sm:text-[10px] ${index === 0 ? "text-emerald-100" : "text-slate-500"}`}>{stage}</span>
+                  <span className={`text-[8px] sm:text-[9px] ${index === 0 ? "text-emerald-100" : "text-slate-500"}`}>{stage}</span>
                 </div>
-                <div className={`h-1 rounded-full ${index === 0 ? "bg-emerald-300/70" : "bg-white/[0.08]"}`} />
               </div>
             ))}
           </div>
@@ -374,7 +372,7 @@ function MatchPreview() {
         <span className="grid size-7 place-items-center rounded-lg bg-emerald-300/10 text-emerald-200">
           <Check className="size-3.5" />
         </span>
-        <span className="text-[10px] font-medium text-slate-200">Built by both of you</span>
+        <span className="text-[10px] font-medium text-slate-200">Skills shared both ways</span>
       </div>
     </motion.div>
   );

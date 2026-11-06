@@ -6,9 +6,8 @@ import { LandingPage } from "@/components/landing-page";
 import { authOptions } from "@/lib/auth";
 
 export const metadata: Metadata = {
-  title: "Build together",
-  description:
-    "Find a complementary collaborator, take on a focused 3-day quest, and ship something worth sharing.",
+  title: "Learn through skill exchange",
+  description: "A peer-to-peer skill exchange where you teach what you know, earn time credits, and learn anything from anyone.",
 };
 
 export default async function HomePage() {

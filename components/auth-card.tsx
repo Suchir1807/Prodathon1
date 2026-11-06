@@ -4,6 +4,7 @@ import {
   Code2,
   Hexagon,
   Layers3,
+  Star,
   Sparkles,
   UsersRound,
 } from "lucide-react";
@@ -11,10 +12,11 @@ import {
 import { cn } from "@/lib/utils";
 
 const STEPS = [
-  { label: "Match", icon: UsersRound },
-  { label: "Quest", icon: Sparkles },
-  { label: "Build", icon: Code2 },
-  { label: "Showcase", icon: Layers3 },
+  { label: "Offer & Want", icon: UsersRound },
+  { label: "Match or Ask", icon: Sparkles },
+  { label: "Book a Session", icon: Code2 },
+  { label: "Learn & Teach", icon: Layers3 },
+  { label: "Review & Grow", icon: Star },
 ];
 
 export function AuthCard({
@@ -66,21 +68,20 @@ export function AuthCard({
           <div className="relative z-10 mt-12 max-w-2xl sm:mt-16 lg:mt-[clamp(4rem,12vh,9rem)]">
             <p className="flex items-center gap-2 text-[10px] font-semibold tracking-[0.22em] text-emerald-200/75 uppercase">
               <span className="size-1.5 rounded-full bg-signal shadow-[0_0_12px_rgba(217,243,106,0.8)]" />
-              A studio for learning by doing
+              A peer-powered skill exchange
             </p>
             <h1 className="mt-4 max-w-xl font-heading text-4xl leading-[1.03] font-medium tracking-[-0.045em] text-white sm:text-5xl lg:text-6xl">
               Your next skill might be{" "}
               <span className="text-signal">a person away.</span>
             </h1>
             <p className="mt-5 max-w-lg text-sm leading-6 text-emerald-50/65 sm:text-base sm:leading-7">
-              Trade what you know for what you want to learn. Find a builder,
-              make something real, and leave with proof of what you can do.
+              Teach what you know, earn time credits, and learn what you want from someone ready to share.
             </p>
           </div>
 
           <ol
             aria-label="How Skillin works"
-            className="relative z-10 mt-9 grid max-w-2xl grid-cols-4 gap-2 sm:mt-11 sm:gap-4"
+            className="relative z-10 mt-9 grid max-w-2xl grid-cols-5 gap-2 sm:mt-11 sm:gap-4"
           >
             {STEPS.map(({ label, icon: Icon }, index) => (
               <li key={label} className="relative min-w-0">
@@ -107,7 +108,7 @@ export function AuthCard({
                   Better together
                 </p>
                 <p className="mt-1 text-sm font-medium text-white">
-                  Different strengths. One shared build.
+                  Different skills. Learning both ways.
                 </p>
               </div>
               <span className="grid size-8 shrink-0 place-items-center rounded-full border border-signal/20 bg-signal/10 text-signal">
@@ -130,7 +131,7 @@ export function AuthCard({
           </div>
 
           <p className="relative z-10 mt-auto hidden pt-10 text-[10px] tracking-wide text-emerald-50/35 lg:block">
-            BUILT FOR CURIOUS PEOPLE WHO SHIP
+            MADE FOR CURIOUS PEOPLE WHO SHARE KNOWLEDGE
           </p>
         </aside>
 
@@ -138,7 +139,7 @@ export function AuthCard({
           <div className="w-full max-w-[420px]">
             <div className="mb-8">
               <p className="text-[10px] font-semibold tracking-[0.18em] text-success uppercase">
-                Your builder space
+                Your learning space
               </p>
               <h2 className="mt-3 font-heading text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
                 {title}
@@ -152,7 +153,7 @@ export function AuthCard({
               </div>
             ) : null}
             <p className="mt-8 text-center text-[10px] leading-5 text-muted-foreground/70">
-              Your profile is yours. Your next build is better together.
+              Your skills have value. Your curiosity does too.
             </p>
           </div>
         </section>

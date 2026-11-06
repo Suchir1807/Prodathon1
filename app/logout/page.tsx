@@ -26,10 +26,10 @@ export default function LogoutPage() {
         </span>
         <Loader2 className="size-8 animate-spin text-[#ccff00]" aria-hidden />
         <p className="mt-6 text-lg font-medium text-white">
-          Signing out of Mission Control…
+          Signing out of Skillin…
         </p>
         <p className="mt-2 max-w-xs text-sm text-slate-400">
-          Clearing your session and returning to the login gate.
+          Clearing your session and returning you to sign in.
         </p>
       </div>
     </div>

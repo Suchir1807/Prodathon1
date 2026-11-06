@@ -1,9 +1,5 @@
-import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
-import { TradingFloor } from "@/components/trading-floor";
-
-export const metadata: Metadata = { title: "Trading Floor" };
-
-export default function TradingFloorPage() {
-  return <TradingFloor />;
+export default function LegacyTradingFloorRedirect() {
+  redirect("/asks");
 }

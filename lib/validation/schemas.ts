@@ -37,15 +37,15 @@ export const signupRequestSchema = signupBaseSchema.pick({
 
 export const profileSchema = z.object({
   displayName: z.string().trim().max(60, "Display name must be 60 characters or fewer."),
-  skillsHave: z.array(z.string().trim().min(1).max(80)).max(30),
-  skillsLearn: z.array(z.string().trim().min(1).max(80)).max(30),
+  skillsHave: z.array(z.string().trim().min(1).max(80)).min(1, "Add at least one skill you can offer.").max(30),
+  skillsLearn: z.array(z.string().trim().min(1).max(80)).min(1, "Add at least one skill you want to learn.").max(30),
   domainInterests: z.array(z.string().trim().min(1).max(80)).max(30),
 }).strict();
 
-export const barterSchema = z.object({
-  skillOffered: z.string().trim().min(1, "Enter the skill you offer.").max(80),
-  skillNeeded: z.string().trim().min(1, "Enter the skill you need.").max(80),
-  description: z.string().trim().min(1, "Describe the exchange.").max(300),
+export const askSchema = z.object({
+  skillOffered: z.string().trim().min(1).max(80),
+  skillWanted: z.string().trim().min(1).max(80),
+  note: z.string().trim().min(10).max(1000),
 }).strict();
 
 export const beaconSchema = z.object({
@@ -54,128 +54,63 @@ export const beaconSchema = z.object({
   urgency: z.enum(["High", "Critical"]),
 }).strict();
 
-export const workspaceTaskSchema = z.object({
-  title: z.string().trim().min(1, "Enter a task title.").max(160),
-}).strict();
-
-export const generatedWorkspaceTasksSchema = z.object({
-  tasks: z.array(z.object({
-    title: z.string().trim().min(1, "Enter a task title.").max(160),
-    status: z.enum(["todo", "doing", "done"]),
-    priority: z.number().int().min(1).max(5),
-  }).strict()).length(5),
-}).strict();
-
 const idempotencyKeySchema = z.string().trim().min(8).max(100).optional();
 
-export const partnerRequestSchema = z.object({
-  recipientId: z.string().regex(/^[a-f\d]{24}$/i, "Choose a valid partner."),
+export const exchangeInviteSchema = z.object({
+  recipientId: z.string().regex(/^[a-f\d]{24}$/i),
   idempotencyKey: z.string().trim().min(8).max(100),
 }).strict();
 
-export const partnerRequestResponseSchema = z.object({
+export const exchangeInviteResponseSchema = z.object({
   requestId: z.string().regex(/^[a-f\d]{24}$/i),
   action: z.enum(["accept", "decline"]),
   idempotencyKey: idempotencyKeySchema,
 }).strict();
 
-export const questAcceptanceSchema = z.object({
-  accepted: z.literal(true),
-  idempotencyKey: idempotencyKeySchema,
-}).strict();
+export const exchangeUpdateSchema = z.object({
+  weeklyGoal: z.string().trim().max(1000).optional(),
+  status: z.enum(["active", "paused", "ended"]).optional(),
+}).strict().refine((value) => Object.keys(value).length > 0);
 
-export const generatedQuestSchema = z.object({
-  title: z.string().trim().min(4).max(120),
-  brief: z.string().trim().min(30).max(3000),
-  roles: z.object({
-    A: z.string().trim().min(5).max(300),
-    B: z.string().trim().min(5).max(300),
-  }).strict(),
-  skillsUsed: z.array(z.string().trim().min(1).max(80)).min(2).max(12).refine(
-    (skills) => new Set(skills).size === skills.length,
-    "Skills must be unique.",
-  ),
-  tasks: z.array(z.object({
-    title: z.string().trim().min(4).max(160),
-    role: z.enum(["A", "B", "shared"]),
-    priority: z.number().int().min(1).max(5),
-  }).strict()).min(6).max(8),
-  sharedSpec: z.string().trim().min(20).max(20_000),
-  curveball: z.object({
-    text: z.string().trim().min(10).max(500),
-    unlockHour: z.number().int().min(1).max(71),
-  }).strict(),
-  stretchGoal: z.string().trim().min(10).max(500),
-}).strict();
-
-export const createQuestSchema = z.object({
-  partnerRequestId: z.string().regex(/^[a-f\d]{24}$/i),
-  quest: generatedQuestSchema,
-  idempotencyKey: idempotencyKeySchema,
-}).strict();
-
-export const questTaskCreateSchema = z.object({
-  title: z.string().trim().min(1).max(160),
-  role: z.enum(["A", "B", "shared"]).default("shared"),
-  assigneeId: z.string().regex(/^[a-f\d]{24}$/i).nullable().optional(),
-  priority: z.number().int().min(1).max(5).default(3),
+export const sessionBookingSchema = z.object({
+  exchangeId: z.string().regex(/^[a-f\d]{24}$/i),
+  teacherId: z.string().regex(/^[a-f\d]{24}$/i),
+  topic: z.string().trim().min(3).max(200),
+  startsAt: z.string().datetime(),
+  durationMinutes: z.number().int().min(15).max(180),
   idempotencyKey: z.string().trim().min(8).max(100),
 }).strict();
 
-export const questTaskReorderSchema = z.object({
-  taskIds: z.array(z.string().regex(/^[a-f\d]{24}$/i)).min(1).max(100),
-}).strict().refine((value) => new Set(value.taskIds).size === value.taskIds.length, {
-  message: "A task can only appear once in the new order.",
-});
+export const sessionStatusSchema = z.object({
+  status: z.enum(["completed", "cancelled"]),
+}).strict();
 
-export const questTaskUpdateSchema = z.object({
-  title: z.string().trim().min(1).max(160).optional(),
-  role: z.enum(["A", "B", "shared"]).optional(),
-  assigneeId: z.string().regex(/^[a-f\d]{24}$/i).nullable().optional(),
-  status: z.enum(["todo", "doing", "done"]).optional(),
-  order: z.number().int().min(0).optional(),
-  priority: z.number().int().min(1).max(5).optional(),
-  idempotencyKey: idempotencyKeySchema,
-}).strict().refine((value) => Object.keys(value).some((key) => key !== "idempotencyKey"), {
-  message: "At least one task field must be updated.",
-});
-
-export const sharedSpecUpdateSchema = z.object({
-  content: z.string().max(200_000),
+export const sessionRoomUpdateSchema = z.object({
+  notes: z.string().max(20_000),
   expectedRevision: z.number().int().min(0),
 }).strict();
 
-export const questMessageSchema = z.object({
-  content: z.string().trim().min(1).max(5000),
-  idempotencyKey: idempotencyKeySchema,
-}).strict();
-
-export const questHintSchema = z.object({
-  blocker: z.string().trim().min(8).max(1000),
-}).strict();
-
-const webUrlSchema = z.string().url().max(500).refine((value) => {
-  const parsed = new URL(value);
-  return parsed.protocol === "https:" || parsed.protocol === "http:";
-}, "Use a valid HTTP or HTTPS URL.");
-
-export const submissionSchema = z.object({
-  repositoryUrl: webUrlSchema,
-  demoUrl: webUrlSchema,
-  writeUp: z.string().trim().min(30).max(3000),
-  idempotencyKey: idempotencyKeySchema,
-}).strict();
-
-export const reviewSchema = z.object({
+export const sessionReviewSchema = z.object({
   rating: z.number().int().min(1).max(5),
   feedback: z.string().trim().min(10).max(2000),
-  decision: z.enum(["approved", "changes_requested"]),
+  skills: z.array(z.string().trim().min(1).max(80)).max(12).default([])
+    .refine((skills) => new Set(skills).size === skills.length, "Skills must be unique."),
+}).strict();
+
+export const messageCreateSchema = z.object({
+  receiverId: z.string().regex(/^[a-f\d]{24}$/i),
+  content: z.string().trim().min(1).max(5000),
+  sessionRoomId: z.string().regex(/^[a-f\d]{24}$/i).optional(),
+  idempotencyKey: z.string().trim().min(8).max(100).optional(),
+}).strict();
+
+export const askCloseSchema = z.object({
+  askId: z.string().regex(/^[a-f\d]{24}$/i),
+  action: z.literal("close"),
 }).strict();
 
 export type LoginValues = z.infer<typeof loginSchema>;
 export type SignupValues = z.infer<typeof signupSchema>;
 export type ProfileValues = z.infer<typeof profileSchema>;
-export type BarterValues = z.infer<typeof barterSchema>;
+export type AskValues = z.infer<typeof askSchema>;
 export type BeaconValues = z.infer<typeof beaconSchema>;
-export type WorkspaceTaskValues = z.infer<typeof workspaceTaskSchema>;
-export type GeneratedQuestValues = z.infer<typeof generatedQuestSchema>;

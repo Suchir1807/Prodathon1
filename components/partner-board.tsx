@@ -101,13 +101,13 @@ export function PartnerBoard() {
       .sort((left, right) => right.insight.score - left.insight.score);
   }, [profile, filters, complementary, directory]);
 
-  async function requestToBuild(partner: Partner) {
+  async function inviteToExchange(partner: Partner) {
     if (inviteRef.current) return;
     inviteRef.current = true;
     setPendingInviteId(partner.id);
     setActionError("");
     try {
-      const response = await fetch("/api/partner-requests", {
+      const response = await fetch("/api/exchange-invites", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ recipientId: partner.id, idempotencyKey: crypto.randomUUID() }),
@@ -162,8 +162,7 @@ export function PartnerBoard() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="max-w-xl text-sm text-slate-400">
-            Find someone whose strengths complement yours and send a build request. Once they accept, Skillin
-            generates a shared quest tailored to both profiles.
+            Find someone whose skills complement yours and invite them to start an ongoing Exchange.
           </p>
         </div>
         <Button
@@ -223,7 +222,7 @@ export function PartnerBoard() {
                   requestPending={pendingInviteId === partner.id}
                   requestSent={sentInvites.has(partner.id)}
                   proposeDisabled={pendingInviteId !== null || sentInvites.has(partner.id)}
-                  onRequest={() => void requestToBuild(partner)}
+                  onRequest={() => void inviteToExchange(partner)}
                 />
               ))}
             </div>

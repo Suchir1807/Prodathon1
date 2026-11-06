@@ -18,7 +18,7 @@ import type { ProfileLiveState } from "@/lib/profile-payload";
 import { cn } from "@/lib/utils";
 
 export type ProfileSocialStats = {
-  sprints: number;
+  sessions: number;
   followers: number;
   following: number;
 };
@@ -49,8 +49,8 @@ export function ProfileSocialStatsRow({
     <>
       <div className="mt-4 grid grid-cols-3 border-y border-white/8 py-3">
         <div className="text-center">
-          <p className="text-sm font-semibold text-white">{stats.sprints}</p>
-          <p className="text-[10px] text-neutral-500 uppercase">Sprints</p>
+          <p className="text-sm font-semibold text-white">{stats.sessions}</p>
+          <p className="text-[10px] text-neutral-500 uppercase">Sessions</p>
         </div>
         {([
           ["followers", "Followers", stats.followers],
@@ -195,7 +195,7 @@ export function LiveIdCard({
       </div>
 
       <ProfileSocialStatsRow
-        stats={stats ?? { sprints: 0, followers: 0, following: 0 }}
+        stats={stats ?? { sessions: 0, followers: 0, following: 0 }}
         users={socialUsers}
       />
 

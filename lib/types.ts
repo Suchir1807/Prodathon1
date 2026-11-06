@@ -12,47 +12,6 @@ export type Partner = Profile & {
   blurb: string;
 };
 
-export type QuestSide = {
-  name: string;
-  focus: string;
-  tasks: string[];
-};
-
-export type Quest = {
-  title: string;
-  tagline: string;
-  difficulty: "Easy" | "Medium" | "Hard";
-  timeline: string;
-  summary: string;
-  stack: string[];
-  studentA: QuestSide;
-  studentB: QuestSide;
-  successCriteria: string[];
-};
-
-export type QuestSource = "gemini" | "sample";
-
-export type QuestResponse = {
-  source: QuestSource;
-  mission: {
-    questTitle: string;
-    kanbanTasksStudentA: string[];
-    kanbanTasksStudentB: string[];
-    apiContractHint: string;
-    plannedCurveball: string;
-  };
-  quest: Quest;
-  notice?: string;
-};
-
-export type AcceptedQuest = {
-  id: string;
-  acceptedAt: string;
-  partnerId: string;
-  partnerName: string;
-  quest: Quest;
-};
-
 export type MatchInsight = {
   score: number;
   theyTeachYou: string[];
@@ -60,7 +19,7 @@ export type MatchInsight = {
   sharedDomains: string[];
 };
 
-export type ChatKind = "dm" | "quest";
+export type ChatKind = "dm" | "session";
 
 export type ChatMessage = {
   id: string;

@@ -1,8 +1,10 @@
 # Skillin
 
-Peer-to-peer skill exchange. Set your skills, filter for a partner, generate a 3-day quest with Gemini, and keep building in the quest group chat.
+Skillin is a peer-to-peer skill exchange where you teach what you know, earn time credits, and learn anything from anyone.
 
-## Run
+The learning loop is: **Offer & Want → Match or Ask → Book a Session → Learn & Teach → Review & Grow.**
+
+## Run locally
 
 ```bash
 npm install
@@ -10,16 +12,16 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Set `MONGODB_URI` and `NEXTAUTH_SECRET` in `.env.local`.
 
-Add your key to `.env.local`:
+## Demo data
+
+To seed a small learning community with demo profiles, an ongoing Exchange, a completed and an upcoming Session, reviews, Asks, and time-credit history:
 
 ```bash
-GEMINI_API_KEY=your_key_here
+npm run seed:demo -- --confirm-demo-seed
 ```
 
-The quest route is `POST /api/generate-quest`. It calls Gemini and falls back across Flash models when one is busy. If the key is missing, the route returns a labeled sample quest so the match flow still runs.
+The seed script uses `DEMO_PASSWORD` when set; otherwise it prints the demo password it created. It only refreshes data associated with its five demo accounts.
 
-Workspace members can use **AI Accelerate** to generate a five-task project breakdown, a TypeScript schema draft, or mock JSON fixtures. The authenticated `POST /api/ai/sprint-assistant` endpoint requires `GEMINI_API_KEY`; it returns a configuration error when the key is missing instead of substituting generated content. Task breakdowns are added to the shared board in one update, while schema and fixture snippets are appended to the autosaved scratchpad.
-
-Profiles and accepted quests are stored in the browser.
+Legacy demo-only data is not migrated. See [docs/data-cleanup.md](./docs/data-cleanup.md) for the guarded cleanup command and its exact scope. The cleanup command has not been run.

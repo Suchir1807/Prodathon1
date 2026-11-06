@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -10,13 +10,13 @@ import {
   LayoutDashboard,
   Menu,
   MessageSquare,
-  PanelsTopLeft,
-  Repeat2,
+  Handshake,
+  BookOpen,
+  CircleHelp,
   PanelLeftClose,
   PanelLeftOpen,
-  Sparkles,
+  Clock3,
   Users,
-  Zap,
   X,
 } from "lucide-react";
 
@@ -32,25 +32,24 @@ import { cn } from "@/lib/utils";
 
 const LINKS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/workspace", label: "Workspace", icon: PanelsTopLeft },
+  { href: "/exchanges", label: "Exchanges", icon: Handshake },
+  { href: "/sessions", label: "Sessions", icon: Clock3 },
+  { href: "/asks", label: "Asks", icon: CircleHelp },
   { href: "/find-partners", label: "Find Partners", icon: Users },
   { href: "/messages", label: "Messages", icon: MessageSquare },
-  { href: "/trading-floor", label: "Trading Floor", icon: Repeat2 },
-  { href: "/sprint", label: "Flash Build", icon: Zap },
-  { href: "/showcase", label: "Showcase", icon: Sparkles },
+  { href: "/profile", label: "Skill Passport", icon: BookOpen },
   { href: "/info", label: "Info", icon: Info },
 ];
 
 const TITLES: Record<string, string> = {
   "/dashboard": "Dashboard",
-  "/workspace": "Quest Workspace",
+  "/exchanges": "Exchanges",
+  "/sessions": "Sessions",
+  "/asks": "Asks",
   "/find-partners": "Find Partners",
   "/messages": "Messages",
-  "/trading-floor": "Trading Floor",
-  "/sprint": "12-Hour Flash Build",
   "/info": "How it Works",
-  "/showcase": "Project Showcase",
-  "/profile": "Profile",
+  "/profile": "Skill Passport",
 };
 
 const AUTH_ROUTES = new Set(["/login", "/signup", "/logout", "/onboarding"]);
@@ -58,14 +57,37 @@ const AUTH_ROUTES = new Set(["/login", "/signup", "/logout", "/onboarding"]);
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(true);
+  const [collapsePreferenceLoaded, setCollapsePreferenceLoaded] = useState(false);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      try {
+        const preference = window.localStorage.getItem("skillin:sidebar-collapsed");
+        setIsCollapsed(preference === null ? window.innerWidth < 1440 : preference === "true");
+      } catch {
+        setIsCollapsed(window.innerWidth < 1440);
+      }
+      setCollapsePreferenceLoaded(true);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!collapsePreferenceLoaded) return;
+    try {
+      window.localStorage.setItem("skillin:sidebar-collapsed", String(isCollapsed));
+    } catch {
+      // Sidebar preference remains usable without local storage.
+    }
+  }, [collapsePreferenceLoaded, isCollapsed]);
 
   if (AUTH_ROUTES.has(pathname) || pathname === "/") {
     return <>{children}</>;
   }
 
   const title =
-    TITLES[pathname] ?? (pathname.startsWith("/workspace/") ? "Quest Workspace" : "Skillin");
+    TITLES[pathname] ?? (    pathname.startsWith("/session-room/") ? "Session Room" : "Skillin");
 
   return (
     <div className="min-h-dvh">
@@ -147,32 +169,32 @@ function AppSidebar({
       id="primary-navigation"
       aria-label="Primary navigation"
       className={cn(
-        "glass fixed inset-y-0 left-0 z-40 flex w-60 flex-col overflow-hidden border-r border-white/8 transition-all duration-300 md:translate-x-0",
-        isCollapsed && "md:w-16",
+        "group/sidebar glass fixed inset-y-0 left-0 z-40 flex w-60 flex-col overflow-hidden border-r border-white/8 transition-all duration-300 md:translate-x-0",
+        isCollapsed && "md:w-16 md:hover:w-60",
         open ? "translate-x-0" : "-translate-x-full",
       )}
     >
       <div
         className={cn(
           "flex h-14 items-center gap-2 border-b border-white/8 px-4",
-          isCollapsed && "md:h-auto md:flex-col md:px-2 md:py-3",
+          isCollapsed && "md:h-auto md:flex-col md:px-2 md:py-3 md:group-hover/sidebar:h-14 md:group-hover/sidebar:flex-row md:group-hover/sidebar:px-4 md:group-hover/sidebar:py-0",
         )}
       >
         <Link
           href="/dashboard"
           onClick={onNavigate}
-          className={cn("flex min-w-0 flex-1 items-center gap-2", isCollapsed && "md:flex-none")}
+          className={cn("flex min-w-0 flex-1 items-center gap-2", isCollapsed && "md:flex-none md:group-hover/sidebar:flex-1")}
         >
           <span className="flex size-8 shrink-0 items-center justify-center rounded-md border border-white/10 text-zinc-300">
             <Hexagon className="size-4" />
           </span>
-          <span className={cn("truncate text-sm font-semibold tracking-tight text-white", isCollapsed && "md:hidden")}>
+          <span className={cn("truncate text-sm font-semibold tracking-tight text-white", isCollapsed && "md:hidden md:group-hover/sidebar:block")}>
             Skillin
           </span>
         </Link>
         <button
           type="button"
-          className="hidden size-8 shrink-0 items-center justify-center rounded-md text-zinc-400 transition-all duration-300 hover:bg-white/5 hover:text-white md:inline-flex"
+          className={cn("hidden size-8 shrink-0 items-center justify-center rounded-md text-zinc-400 transition-all duration-300 hover:bg-white/5 hover:text-white md:inline-flex", isCollapsed && "md:group-hover/sidebar:ml-auto")}
           aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           aria-expanded={!isCollapsed}
           aria-controls="primary-navigation"
@@ -190,7 +212,7 @@ function AppSidebar({
         </button>
       </div>
 
-      <nav className={cn("flex flex-1 flex-col gap-1 p-3", isCollapsed && "md:px-2")}>
+      <nav className={cn("flex flex-1 flex-col gap-1 p-3", isCollapsed && "md:px-2 md:group-hover/sidebar:px-3")}>
         {LINKS.map((link) => {
           const active =
             link.href === "/dashboard"
@@ -207,7 +229,7 @@ function AppSidebar({
               onClick={onNavigate}
               className={cn(
                 "flex items-center gap-2 rounded-md border-l-2 px-3 py-2 text-sm transition-colors",
-                isCollapsed && "md:justify-center md:px-0",
+                isCollapsed && "md:justify-center md:px-0 md:group-hover/sidebar:justify-start md:group-hover/sidebar:px-3",
                 active
                   ? "border-white/25 bg-white/[0.05] text-white"
                   : "border-transparent text-zinc-400 hover:bg-white/[0.03] hover:text-white",
@@ -219,9 +241,9 @@ function AppSidebar({
                   <span className="absolute -top-1 -right-1 hidden size-1.5 rounded-full bg-emerald-300 md:block" />
                 ) : null}
               </span>
-              <span className={cn("flex-1 truncate", isCollapsed && "md:hidden")}>{link.label}</span>
+              <span className={cn("flex-1 truncate", isCollapsed && "md:hidden md:group-hover/sidebar:block")}>{link.label}</span>
               {link.href === "/messages" && unread > 0 ? (
-                <span className={cn("text-[11px] font-medium text-zinc-300", isCollapsed && "md:hidden")}>
+                <span className={cn("text-[11px] font-medium text-zinc-300", isCollapsed && "md:hidden md:group-hover/sidebar:block")}>
                   {unread}
                 </span>
               ) : null}
@@ -230,19 +252,19 @@ function AppSidebar({
         })}
       </nav>
 
-      <div className={cn("border-t border-white/8 p-3", isCollapsed && "md:px-2")}>
+      <div className={cn("border-t border-white/8 p-3", isCollapsed && "md:px-2 md:group-hover/sidebar:px-3")}>
         <Link
           href="/profile"
           title="View profile"
           aria-label="View profile"
           className={cn(
             "flex w-full items-center gap-2 rounded-lg border border-white/6 bg-white/[0.02] px-2 py-2 text-left transition hover:bg-white/5",
-            isCollapsed && "md:justify-center md:px-0",
+            isCollapsed && "md:justify-center md:px-0 md:group-hover/sidebar:justify-start md:group-hover/sidebar:px-2",
             pathname === "/profile" && "border-white/15 bg-white/[0.04]",
           )}
         >
           <UserAvatar name={name} className="size-8 text-[10px]" />
-          <span className={cn("min-w-0 flex-1", isCollapsed && "md:hidden")}>
+          <span className={cn("min-w-0 flex-1", isCollapsed && "md:hidden md:group-hover/sidebar:block")}>
             <span className="block truncate text-sm text-white">{name}</span>
             <span className="block text-[11px] text-slate-500">View profile</span>
           </span>

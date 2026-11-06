@@ -4,11 +4,11 @@ import { Types } from "mongoose";
 
 import { authOptions } from "@/lib/auth";
 import connectDB from "@/lib/mongodb";
-import Badge from "@/models/Badge";
-import "@/models/Quest";
+import { ensureCreditAccount, getCreditBalance } from "@/lib/credit-balance";
+import Session from "@/models/Session";
+import SkillBadge from "@/models/SkillBadge";
 import { profileSchema } from "@/lib/validation/schemas";
 import User from "@/models/User";
-import Workspace from "@/models/Workspace";
 
 type PopulatedProfileUser = {
   _id: Types.ObjectId;
@@ -49,7 +49,7 @@ function profileBody(user: {
     skillsHave: asStringList(user.skillsHave),
     skillsLearn: asStringList(user.skillsLearn),
     domainInterests: asStringList(user.domainInterests),
-    isProfileComplete: Boolean(user.isProfileComplete),
+    isProfileComplete: Boolean(user.isProfileComplete && user.skillsHave?.length && user.skillsLearn?.length),
   };
 }
 
@@ -79,31 +79,30 @@ export async function GET() {
 
     const followers = serializeSocialUsers(user.followers);
     const following = serializeSocialUsers(user.following);
-    const [sprints, badges] = await Promise.all([
-      Workspace.countDocuments({
-        users: user._id,
-        type: "sprint",
-        status: "completed",
-      }),
-      Badge.find({ user: user._id })
-        .sort({ verifiedAt: -1 })
+    await ensureCreditAccount(user._id);
+    const [sessions, badges, creditBalance] = await Promise.all([
+      Session.countDocuments({ participants: user._id, status: "completed" }),
+      SkillBadge.find({ userId: user._id })
+        .sort({ earnedAt: -1 })
         .limit(30)
-        .populate("quest", "title")
+        .populate("sessionId", "topic")
         .lean(),
+      getCreditBalance(user._id),
     ]);
     return NextResponse.json({
       ...profileBody(user),
       socialStats: {
-        sprints,
+        sessions,
         followers: followers.length,
         following: following.length,
       },
+      creditBalance,
       socialUsers: { followers, following },
       badges: badges.map((badge) => ({
         id: badge._id.toString(),
         skill: badge.skill,
-        questTitle: (badge.quest as unknown as { title?: string } | null)?.title ?? "Completed quest",
-        verifiedAt: badge.verifiedAt.toISOString(),
+        sessionTopic: (badge.sessionId as unknown as { topic?: string } | null)?.topic ?? "Completed Session",
+        verifiedAt: badge.earnedAt.toISOString(),
       })),
     });
   } catch (error) {

@@ -8,7 +8,6 @@ import { useSession } from "next-auth/react";
 import {
   ArrowRight,
   ArrowUp,
-  Check,
   Code2,
   Compass,
   ExternalLink,
@@ -25,7 +24,6 @@ import {
 import type { ForceGraphMethods, NodeObject } from "react-force-graph-3d";
 import * as THREE from "three";
 
-import { BuilderMilestones } from "@/components/builder-milestones";
 import { useProfile } from "@/components/profile-provider";
 import { Button } from "@/components/ui/button";
 import { displayName } from "@/lib/profile";
@@ -134,7 +132,7 @@ const DEVELOPERS: DeveloperGraph = (() => {
 export function DashboardView() {
   const shouldReduceMotion = useReducedMotion();
   const { data: session } = useSession();
-  const { profile, quests } = useProfile();
+  const { profile } = useProfile();
   const graphRef = useRef<ForceGraphMethods | undefined>(undefined);
   const graphContainerRef = useRef<HTMLDivElement>(null);
   const nodeVisualsRef = useRef(
@@ -158,9 +156,6 @@ export function DashboardView() {
   const [hoveredNode, setHoveredNode] = useState<DeveloperNode | null>(null);
   const availableCount = DEVELOPERS.nodes.filter((node) => node.available).length;
   const userName = displayName(profile, session?.user?.name ?? undefined);
-  const activeQuest = quests[0] ?? null;
-  const activeQuestDay = activeQuest ? getQuestDayIndex(activeQuest.acceptedAt) : 0;
-
   const graphData = useMemo(() => DEVELOPERS, []);
   const matchedNodeIds = useMemo(
     () => new Set(commandResult?.matches.map((node) => node.id) ?? []),
@@ -345,13 +340,13 @@ export function DashboardView() {
           <div className="min-w-0">
             <p className="flex items-center gap-2 text-[10px] font-semibold tracking-[0.18em] text-emerald-300/75 uppercase">
               <span className="size-1.5 rounded-full bg-emerald-300 shadow-[0_0_10px_rgba(110,231,183,0.7)]" />
-              Your builder dashboard
+              Your learning network
             </p>
             <h1 className="mt-2 font-heading text-3xl font-semibold tracking-tight text-white sm:text-4xl">
               Welcome back, <span className="text-emerald-200">{userName}</span>
             </h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400 sm:text-base">
-              Find a collaborator who can help turn your next idea into something real.
+              Share what you can teach, and find people who can help you learn what comes next.
             </p>
             {(profile.canTeach.length > 0 || profile.wantsToLearn.length > 0) ? (
               <div className="mt-4 flex flex-wrap gap-2">
@@ -382,8 +377,6 @@ export function DashboardView() {
           </div>
         </header>
 
-        <BuilderMilestones profile={profile} questCount={quests.length} />
-
         <section
           aria-label="How Skillin works"
           className="mt-6 rounded-2xl border border-white/[0.07] bg-slate-950/45 p-4 backdrop-blur-xl sm:p-5"
@@ -394,21 +387,20 @@ export function DashboardView() {
                 The Skillin loop
               </p>
               <h2 className="mt-1 text-sm font-semibold text-white">
-                From first hello to something shipped.
+                Offer & Want → Match or Ask → Book a Session → Learn & Teach → Review & Grow.
               </h2>
             </div>
             <p className="text-xs text-slate-500">
-              {quests.length
-                ? `${quests.length} quest${quests.length === 1 ? "" : "s"} accepted`
-                : "Your first quest starts with a match"}
+              Your time and skills make the exchange.
             </p>
           </div>
-          <ol className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <ol className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
             {[
-              { label: "Match", href: "/find-partners", icon: UsersRound, detail: "Meet your counterpart" },
-              { label: "Generate a quest", href: "/find-partners", icon: SparklesIcon, detail: "Set a 3-day goal" },
-              { label: "Build together", href: "/workspace", icon: Code2, detail: "Make progress in sync" },
-              { label: "Showcase", href: "/showcase", icon: ExternalLink, detail: "Share what you made" },
+              { label: "Offer & Want", href: "/profile", icon: UsersRound, detail: "Set your learning profile" },
+              { label: "Match or Ask", href: "/find-partners", icon: SparklesIcon, detail: "Find or request a partner" },
+              { label: "Book a Session", href: "/sessions", icon: Code2, detail: "Choose a time to connect" },
+              { label: "Learn & Teach", href: "/exchanges", icon: ExternalLink, detail: "Keep your exchange going" },
+              { label: "Review & Grow", href: "/profile", icon: Shield, detail: "Grow your Skill Passport" },
             ].map((step, index) => {
               const Icon = step.icon;
               return (
@@ -497,13 +489,13 @@ export function DashboardView() {
                 Neural Nexus
               </p>
               <p className="mt-1 text-[11px] text-slate-400">
-                Bengaluru maker network · {DEVELOPERS.nodes.length} simulated profiles
+                Bengaluru learning network · {DEVELOPERS.nodes.length} sample profiles
               </p>
             </div>
             <div className="rounded-xl border border-emerald-400/15 bg-slate-950/60 px-3 py-2 text-right backdrop-blur-xl">
               <p className="flex items-center justify-end gap-1.5 text-[10px] text-slate-400">
                 <Radio className="size-3 text-emerald-300" />
-                Available to build
+                Available to exchange
               </p>
               <p className="mt-0.5 text-sm font-semibold text-emerald-200">
                 {availableCount} <span className="font-normal text-slate-500">/ {DEVELOPERS.nodes.length}</span>
@@ -613,80 +605,34 @@ export function DashboardView() {
         </section>
 
         <div className="grid gap-4 py-5 lg:grid-cols-[minmax(0,1.3fr)_minmax(300px,0.7fr)]">
-          <section aria-labelledby="current-quest-heading" className="rounded-2xl border border-white/10 bg-white/[0.035] p-5 backdrop-blur-xl sm:p-6">
+          <section aria-labelledby="next-step-heading" className="rounded-2xl border border-white/10 bg-white/[0.035] p-5 backdrop-blur-xl sm:p-6">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <p className="text-[10px] font-semibold tracking-[0.16em] text-emerald-300/70 uppercase">
-                  The 3-day build
+                  Your next step
                 </p>
-                <h2 id="current-quest-heading" className="mt-2 font-heading text-xl font-semibold text-white">
-                  {activeQuest ? activeQuest.quest.title : "Your next build starts with a match"}
+                <h2 id="next-step-heading" className="mt-2 font-heading text-xl font-semibold text-white">
+                  Make time for what you want to learn.
                 </h2>
-                <p className="mt-1 text-sm text-slate-400">
-                  {activeQuest
-                    ? `Building with ${activeQuest.partnerName}`
-                    : "Meet someone with complementary skills, then make something together."}
+                <p className="mt-1 max-w-xl text-sm leading-6 text-slate-400">
+                  Find a peer, agree on a session, and grow your skills through a real exchange.
                 </p>
               </div>
-              {activeQuest ? (
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-300/20 bg-emerald-300/[0.07] px-2.5 py-1 text-[11px] font-medium text-emerald-200">
-                  <span className="size-1.5 animate-pulse rounded-full bg-emerald-300" />
-                  Day {activeQuestDay + 1} of 3
-                </span>
-              ) : (
-                <span className="grid size-10 place-items-center rounded-xl border border-signal/20 bg-signal/[0.07] text-signal">
-                  <Compass className="size-5" />
-                </span>
-              )}
+              <span className="grid size-10 place-items-center rounded-xl border border-signal/20 bg-signal/[0.07] text-signal">
+                <Compass className="size-5" />
+              </span>
             </div>
-
-            {activeQuest ? (
-              <>
-                <div className="mt-5 h-1.5 overflow-hidden rounded-full bg-white/10" role="progressbar" aria-label="Quest progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(((activeQuestDay + 1) / 3) * 100)}>
-                  <div
-                    className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-lime-300 transition-[width] duration-700"
-                    style={{ width: `${((activeQuestDay + 1) / 3) * 100}%` }}
-                  />
-                </div>
-                <ol className="mt-4 grid grid-cols-3 gap-3">
-                  {(["Plan", "Build", "Showcase"] as const).map((step, index) => {
-                    const complete = index < activeQuestDay;
-                    const current = index === activeQuestDay;
-                    return (
-                      <li key={step} className="flex items-center gap-2 text-xs">
-                        <span className={`grid size-6 shrink-0 place-items-center rounded-full border ${complete ? "border-emerald-300/40 bg-emerald-300/15 text-emerald-200" : current ? "border-signal/50 bg-signal/10 text-signal" : "border-white/10 text-slate-500"}`}>
-                          {complete ? <Check className="size-3" /> : index + 1}
-                        </span>
-                        <span className={current ? "font-medium text-white" : complete ? "text-emerald-100/70" : "text-slate-500"}>
-                          Day {index + 1} · {step}
-                        </span>
-                      </li>
-                    );
-                  })}
-                </ol>
-                <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-white/8 pt-4">
-                  <p className="max-w-xl text-xs leading-5 text-slate-400">
-                    {activeQuest.quest.tagline}
-                  </p>
-                  <Button asChild size="sm" variant="outline">
-                    <Link href="/workspace">
-                      Open workspace <ArrowRight />
-                    </Link>
-                  </Button>
-                </div>
-              </>
-            ) : (
-              <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-white/8 pt-4">
-                <p className="max-w-xl text-xs leading-5 text-slate-400">
-                  Your skill profile helps Skillin surface the right people and a project worth finishing.
-                </p>
-                <Button asChild size="sm">
-                  <Link href="/find-partners">
-                    Explore partners <ArrowRight />
-                  </Link>
-                </Button>
-              </div>
-            )}
+            <div className="mt-5 flex flex-wrap gap-2 border-t border-white/8 pt-4">
+              <Button asChild size="sm">
+                <Link href="/find-partners">Find a learning partner <ArrowRight /></Link>
+              </Button>
+              <Button asChild size="sm" variant="outline">
+                <Link href="/asks">Explore Asks</Link>
+              </Button>
+              <Button asChild size="sm" variant="ghost">
+                <Link href="/sessions">View sessions</Link>
+              </Button>
+            </div>
           </section>
 
           <section aria-labelledby="skill-signal-heading" className="rounded-2xl border border-white/10 bg-white/[0.035] p-5 backdrop-blur-xl sm:p-6">
@@ -742,11 +688,4 @@ function SkillGroup({
       </div>
     </div>
   );
-}
-
-function getQuestDayIndex(acceptedAt: string) {
-  const acceptedTime = Date.parse(acceptedAt);
-  if (!Number.isFinite(acceptedTime)) return 0;
-  const elapsedDays = Math.floor(Math.max(0, Date.now() - acceptedTime) / 86_400_000);
-  return Math.min(2, elapsedDays);
 }

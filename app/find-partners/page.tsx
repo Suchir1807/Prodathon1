@@ -107,7 +107,7 @@ export default function FindPartnersPage() {
       try {
         const [response, requestsResponse] = await Promise.all([
           fetch("/api/users", { cache: "no-store" }),
-          fetch("/api/partner-requests", { cache: "no-store" }),
+          fetch("/api/exchange-invites", { cache: "no-store" }),
         ]);
         const data = (await response.json()) as PartnerUser[] | { error?: string; users?: PartnerUser[] };
         const requestData = (await requestsResponse.json()) as { sent?: Array<{ recipient: { id: string } }> };
@@ -116,7 +116,7 @@ export default function FindPartnersPage() {
           if (!cancelled) setError(message ?? "Could not load partners.");
           return;
         }
-        if (!requestsResponse.ok) throw new Error("Could not load your pending build requests.");
+        if (!requestsResponse.ok) throw new Error("Could not load your pending Exchange invitations.");
         const list = Array.isArray(data) ? data : (data.users ?? []);
         if (!cancelled) {
           setPartners(list);
@@ -136,13 +136,13 @@ export default function FindPartnersPage() {
     };
   }, []);
 
-  async function sendPartnerRequest(receiverId: string) {
+  async function sendExchangeInvite(receiverId: string) {
     if (inviteRef.current) return;
     inviteRef.current = true;
     setPendingId(receiverId);
     setInviteError("");
     try {
-      const response = await fetch("/api/partner-requests", {
+      const response = await fetch("/api/exchange-invites", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ recipientId: receiverId, idempotencyKey: crypto.randomUUID() }),
@@ -199,7 +199,7 @@ export default function FindPartnersPage() {
           <div className="h-9 w-72 max-w-full animate-pulse rounded bg-muted" />
           <div className="h-4 w-[28rem] max-w-full animate-pulse rounded bg-muted" />
         </div>
-        <div role="status" aria-label="Loading builders" className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div role="status" aria-label="Loading members" className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {Array.from({ length: 6 }, (_, index) => (
             <div key={index} className="min-h-64 animate-pulse rounded-2xl border border-border bg-card/60 p-5">
               <div className="flex items-center gap-3">
@@ -217,7 +217,7 @@ export default function FindPartnersPage() {
               </div>
             </div>
           ))}
-          <span className="sr-only">Loading builders and their skill profiles…</span>
+          <span className="sr-only">Loading members and their skill profiles…</span>
         </div>
       </div>
     );
@@ -247,7 +247,7 @@ export default function FindPartnersPage() {
               Find your people.
             </h1>
             <p className="mt-3 max-w-xl text-sm leading-6 text-emerald-50/65">
-              Meet builders who can teach what you want to learn—and want to learn what you can teach.
+              Meet peers who can teach what you want to learn—and want to learn what you can teach.
             </p>
           </div>
           <div className="flex items-center gap-3 rounded-xl border border-emerald-100/10 bg-white/[0.04] px-4 py-3 backdrop-blur-md">
@@ -263,10 +263,10 @@ export default function FindPartnersPage() {
       </header>
 
       <div className="mt-6 grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
-        <section aria-label="Builder directory" className="min-w-0">
+        <section aria-label="Member directory" className="min-w-0">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 className="font-heading text-lg font-semibold text-white">Builders to meet</h2>
+              <h2 className="font-heading text-lg font-semibold text-white">People to meet</h2>
               <p className="mt-1 text-xs text-slate-400">
                 {visiblePartners.length} {visiblePartners.length === 1 ? "person" : "people"} in your view
               </p>
@@ -295,11 +295,11 @@ export default function FindPartnersPage() {
                 <Compass className="size-5" />
               </span>
               <h3 className="mt-4 font-heading text-lg font-semibold text-white">
-                {partners.length === 0 ? "Your first match is waiting" : "No builders found"}
+                {partners.length === 0 ? "Your first match is waiting" : "No members found"}
               </h3>
               <p className="mt-2 max-w-sm text-sm leading-6 text-slate-400">
                 {partners.length === 0
-                  ? "As more builders join, you’ll find peers to trade skills and start a shared project with."
+                  ? "As more members join, you’ll find peers to trade skills and begin an ongoing Exchange."
                   : "Try another name or skill, or clear your search to see everyone."}
               </p>
               {partners.length > 0 ? (
@@ -331,7 +331,7 @@ export default function FindPartnersPage() {
                         <p className="mt-0.5 truncate text-xs text-slate-500">@{partner.username}</p>
                         <div className="mt-2 flex items-center gap-1.5 text-[10px] text-slate-400">
                           <span className="size-1.5 rounded-full bg-emerald-300" />
-                          Skillin builder
+                          Skillin member
                         </div>
                       </div>
                       <div className="shrink-0 text-right">
@@ -375,10 +375,10 @@ export default function FindPartnersPage() {
                         size="sm"
                         disabled={pending || sent}
                         loading={pending}
-                        onClick={() => void sendPartnerRequest(partner._id)}
+                        onClick={() => void sendExchangeInvite(partner._id)}
                         className="flex-1"
                       >
-                        {sent ? <><Check /> Request sent</> : pending ? "Sending…" : <>Request to build <ArrowRight /></>}
+                        {sent ? <><Check /> Invitation sent</> : pending ? "Sending…" : <>Invite to Exchange <ArrowRight /></>}
                       </Button>
                       <Button
                         size="sm"
@@ -396,7 +396,7 @@ export default function FindPartnersPage() {
                       href={`/profile/${partner._id}`}
                       className="relative mt-3 inline-flex w-fit items-center gap-1 text-[11px] font-medium text-slate-400 transition-colors hover:text-emerald-200"
                     >
-                      View builder profile <ArrowRight className="size-3" />
+                      View Skill Passport <ArrowRight className="size-3" />
                     </Link>
                   </article>
                 );

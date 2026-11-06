@@ -67,7 +67,7 @@ export default function LoginPage() {
   return (
     <AuthCard
       title="Welcome back"
-      subtitle="Sign in to pick up where your next build begins."
+      subtitle="Sign in to continue your skill exchanges."
       footer={
         <>
           No account yet? <AuthLink href="/signup">Create one</AuthLink>

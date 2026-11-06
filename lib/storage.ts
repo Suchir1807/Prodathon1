@@ -1,18 +1,14 @@
 import { PLACEHOLDER_CHAT_IDS } from "@/lib/chats";
 import { sanitizeProfile } from "@/lib/profile";
-import type { AcceptedQuest, Conversation, Profile, Quest } from "@/lib/types";
+import type { Conversation, Profile } from "@/lib/types";
 
 const PROFILE_KEY = "skillin.profile";
-const QUESTS_KEY = "skillin.quests";
 const CHATS_KEY = "skillin.chats";
 const PROFILE_EVENT = "skillin-profile";
-const QUESTS_EVENT = "skillin-quests";
 const CHATS_EVENT = "skillin-chats";
 
 const LEGACY_PROFILE_KEY = "cofoundry.profile";
-const LEGACY_QUESTS_KEY = "cofoundry.quests";
 const LEGACY_CHATS_KEY = "cofoundry.chats";
-const LEGACY_WORKSPACE_KEY = "cofoundry.workspace";
 
 function readMigratedItem(key: string, legacyKey: string) {
   const value = window.localStorage.getItem(key);
@@ -41,44 +37,11 @@ export function writeProfile(profile: Profile) {
 export function clearLocalAppState() {
   if (typeof window === "undefined") return;
   window.localStorage.removeItem(PROFILE_KEY);
-  window.localStorage.removeItem(QUESTS_KEY);
   window.localStorage.removeItem(CHATS_KEY);
   window.localStorage.removeItem(LEGACY_PROFILE_KEY);
-  window.localStorage.removeItem(LEGACY_QUESTS_KEY);
   window.localStorage.removeItem(LEGACY_CHATS_KEY);
-  window.localStorage.removeItem(LEGACY_WORKSPACE_KEY);
   emit(PROFILE_EVENT);
-  emit(QUESTS_EVENT);
   emit(CHATS_EVENT);
-  window.dispatchEvent(new Event("skillin-workspace"));
-}
-
-function isQuest(value: unknown): value is Quest {
-  if (!value || typeof value !== "object") return false;
-  const quest = value as Quest;
-  return typeof quest.title === "string" && Array.isArray(quest.studentA?.tasks);
-}
-
-export function readQuests(): AcceptedQuest[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = readMigratedItem(QUESTS_KEY, LEGACY_QUESTS_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw) as unknown;
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter((item): item is AcceptedQuest => {
-      if (!item || typeof item !== "object") return false;
-      const quest = item as AcceptedQuest;
-      return typeof quest.id === "string" && isQuest(quest.quest);
-    });
-  } catch {
-    return [];
-  }
-}
-
-export function writeQuests(quests: AcceptedQuest[]) {
-  window.localStorage.setItem(QUESTS_KEY, JSON.stringify(quests));
-  emit(QUESTS_EVENT);
 }
 
 function isConversation(value: unknown): value is Conversation {
@@ -86,7 +49,7 @@ function isConversation(value: unknown): value is Conversation {
   const chat = value as Conversation;
   return (
     typeof chat.id === "string" &&
-    (chat.kind === "dm" || chat.kind === "quest") &&
+    (chat.kind === "dm" || chat.kind === "session") &&
     typeof chat.title === "string" &&
     Array.isArray(chat.messages)
   );
@@ -130,15 +93,10 @@ function subscribe(eventName: string) {
 }
 
 export const subscribeProfile = subscribe(PROFILE_EVENT);
-export const subscribeQuests = subscribe(QUESTS_EVENT);
 export const subscribeChats = subscribe(CHATS_EVENT);
 
 export function getProfileSnapshot() {
   return readMigratedItem(PROFILE_KEY, LEGACY_PROFILE_KEY) ?? "";
-}
-
-export function getQuestsSnapshot() {
-  return readMigratedItem(QUESTS_KEY, LEGACY_QUESTS_KEY) ?? "";
 }
 
 export function getChatsSnapshot() {
@@ -164,20 +122,5 @@ export function chatsFromSnapshot(snapshot: string): Conversation[] {
     return mergeChats(parseChats(JSON.parse(snapshot)));
   } catch {
     return mergeChats([]);
-  }
-}
-
-export function questsFromSnapshot(snapshot: string): AcceptedQuest[] {
-  if (!snapshot) return [];
-  try {
-    const parsed = JSON.parse(snapshot) as unknown;
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter((item): item is AcceptedQuest => {
-      if (!item || typeof item !== "object") return false;
-      const quest = item as AcceptedQuest;
-      return typeof quest.id === "string" && isQuest(quest.quest);
-    });
-  } catch {
-    return [];
   }
 }

@@ -15,7 +15,6 @@ type InviteSender = {
   displayName: string;
   skillsHave: string[];
   skillsLearn: string[];
-  domainInterests: string[];
 };
 
 type PendingInvite = {
@@ -36,13 +35,13 @@ export function InvitationsInbox() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await fetch("/api/partner-requests", { cache: "no-store" });
+      const response = await fetch("/api/exchange-invites", { cache: "no-store" });
       const data = (await response.json()) as { received?: PendingInvite[]; error?: string };
-      if (!response.ok) throw new Error(data.error ?? "Unable to load partner requests.");
+      if (!response.ok) throw new Error(data.error ?? "Unable to load Exchange invitations.");
       setInvites(data.received ?? []);
       setActionError("");
     } catch (error) {
-      setActionError(error instanceof Error ? error.message : "Unable to load partner requests.");
+      setActionError(error instanceof Error ? error.message : "Unable to load Exchange invitations.");
     } finally {
       setLoading(false);
     }
@@ -67,7 +66,7 @@ export function InvitationsInbox() {
     setActingStatus(status);
     setActionError("");
     try {
-      const response = await fetch("/api/partner-requests", {
+      const response = await fetch("/api/exchange-invites", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -77,7 +76,7 @@ export function InvitationsInbox() {
         }),
       });
       const data = (await response.json()) as {
-        questId?: string;
+        exchangeId?: string;
         error?: string;
       };
 
@@ -85,7 +84,7 @@ export function InvitationsInbox() {
 
       if (status === "accepted") {
         setOpen(false);
-        if (data.questId) router.push(`/workspace?questId=${encodeURIComponent(data.questId)}`);
+        if (data.exchangeId) router.push(`/exchanges`);
         return;
       }
 
@@ -128,7 +127,7 @@ export function InvitationsInbox() {
           />
           <div className="absolute right-0 z-50 mt-2 w-80 rounded-xl border border-white/10 bg-[#0e1526]/95 p-3 shadow-xl backdrop-blur-xl">
             <p className="px-1 text-xs font-medium tracking-wide text-slate-400 uppercase">
-              Build requests
+              Exchange invitations
             </p>
             {actionError ? <p role="alert" className="mt-2 px-1 text-xs text-rose-400">{actionError}</p> : null}
             {loading ? (
@@ -145,7 +144,7 @@ export function InvitationsInbox() {
                     name: invite.sender.displayName,
                     canTeach: invite.sender.skillsHave,
                     wantsToLearn: invite.sender.skillsLearn,
-                    domains: invite.sender.domainInterests,
+                    domains: [],
                   };
                   const label = displayName(senderProfile, invite.sender.username);
                   const busy = actingId === invite.id;
@@ -158,7 +157,7 @@ export function InvitationsInbox() {
                         <UserAvatar name={label} className="size-8 text-[10px]" />
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm text-white">{label}</p>
-                          <p className="text-[11px] text-slate-500">A shared quest is ready to generate</p>
+                          <p className="text-[11px] text-slate-500">Start learning and teaching together</p>
                         </div>
                       </div>
                       <div className="mt-3 flex gap-2">

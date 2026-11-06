@@ -8,10 +8,13 @@ import { UserAvatar } from "@/components/user-avatar";
 
 type FollowNotification = {
   id: string;
-  type: "follow" | "partner_request" | "request_accepted" | "quest_ready" | "task_completed" | "new_message" | "curveball_unlocked" | "submission" | "review";
+  type: "follow" | "exchange_invite" | "exchange_started" | "ask_matched" | "session_booked" | "session_reminder" | "session_completed" | "new_message" | "session_review";
   isRead: boolean;
   createdAt: string;
-  questId: string | null;
+  exchangeId: string | null;
+  sessionId: string | null;
+  sessionRoomId: string | null;
+  askId: string | null;
   resourceId: string | null;
   sender: {
     id: string;
@@ -179,20 +182,22 @@ export function NotificationBell() {
                     sender.isFollowing || followingBack.includes(sender.id);
                   const copy: Record<FollowNotification["type"], string> = {
                     follow: "started following you.",
-                    partner_request: "sent you a build request.",
-                    request_accepted: "accepted your build request.",
-                    quest_ready: "your shared quest is ready.",
-                    task_completed: "completed a quest task.",
-                    new_message: "sent you a quest message.",
-                    curveball_unlocked: "your quest curveball has unlocked.",
-                    submission: "submitted work for your review.",
-                    review: "left a review on your quest.",
+                    exchange_invite: "invited you to start an Exchange.",
+                    exchange_started: "accepted your Exchange invitation.",
+                    ask_matched: "accepted your Ask. Your Exchange is ready.",
+                    session_booked: "booked a Session with you.",
+                    session_reminder: "has an upcoming Session with you.",
+                    session_completed: "marked your Session complete.",
+                    new_message: "sent you a message.",
+                    session_review: "left a Session review for you.",
                   };
-                  const destination = notification.questId
-                    ? `/workspace?questId=${encodeURIComponent(notification.questId)}`
-                    : notification.type === "partner_request"
-                      ? "/find-partners"
-                      : `/profile/${encodeURIComponent(sender.id)}`;
+                  const destination = notification.sessionRoomId
+                    ? `/session-room/${encodeURIComponent(notification.sessionRoomId)}`
+                    : notification.exchangeId
+                      ? "/exchanges"
+                      : notification.askId
+                        ? "/asks"
+                        : `/profile/${encodeURIComponent(sender.id)}`;
                   return (
                     <li
                       key={notification.id}
@@ -210,7 +215,7 @@ export function NotificationBell() {
                           onClick={() => setOpen(false)}
                           className="shrink-0 text-[10px] text-[#ccff00] hover:underline"
                         >
-                          {notification.questId ? "Open quest" : "View"}
+                          {notification.sessionRoomId ? "Open Session" : notification.exchangeId ? "Open Exchange" : "View"}
                         </Link>
                       ) : (
                         <button

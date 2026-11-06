@@ -9,12 +9,10 @@ export const metadata: Metadata = {
 export default async function MessagesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ chat?: string | string[]; quest?: string | string[] }>;
+  searchParams: Promise<{ chat?: string | string[] }>;
 }) {
   const params = await searchParams;
   const value = params.chat;
   const chat = typeof value === "string" ? value : undefined;
-  const questValue = params.quest;
-  const quest = typeof questValue === "string" ? questValue : undefined;
-  return <MessagesHub initialChatId={chat} initialQuestId={quest} />;
+  return <MessagesHub initialChatId={chat} />;
 }

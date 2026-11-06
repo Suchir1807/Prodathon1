@@ -3,33 +3,26 @@
 import { createContext, useCallback, useContext, useMemo, useSyncExternalStore } from "react";
 import { useSession } from "next-auth/react";
 
-import { buildQuestChat, messageFromYou } from "@/lib/chats";
+import { messageFromYou } from "@/lib/chats";
 import { displayName, sanitizeProfile } from "@/lib/profile";
 import {
   getChatsSnapshot,
   getProfileSnapshot,
-  getQuestsSnapshot,
   getServerSnapshot,
   chatsFromSnapshot,
   profileFromSnapshot,
-  questsFromSnapshot,
   readChats,
-  readQuests,
   subscribeChats,
   subscribeProfile,
-  subscribeQuests,
   writeChats,
   writeProfile,
-  writeQuests,
 } from "@/lib/storage";
-import type { AcceptedQuest, Conversation, Profile } from "@/lib/types";
+import type { Conversation, Profile } from "@/lib/types";
 
 type ProfileContextValue = {
   profile: Profile;
-  quests: AcceptedQuest[];
   chats: Conversation[];
   saveProfile: (profile: Profile) => void;
-  acceptQuest: (quest: AcceptedQuest) => string;
   sendMessage: (chatId: string, body: string) => void;
   markRead: (chatId: string) => void;
 };
@@ -53,30 +46,16 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
     getProfileSnapshot,
     getServerSnapshot,
   );
-  const questsSnapshot = useSyncExternalStore(
-    subscribeQuests,
-    getQuestsSnapshot,
-    getServerSnapshot,
-  );
   const chatsSnapshot = useSyncExternalStore(
     subscribeChats,
     getChatsSnapshot,
     getServerSnapshot,
   );
   const profile = useMemo(() => profileFromSnapshot(profileSnapshot), [profileSnapshot]);
-  const quests = useMemo(() => questsFromSnapshot(questsSnapshot), [questsSnapshot]);
   const chats = useMemo(() => chatsFromSnapshot(chatsSnapshot), [chatsSnapshot]);
 
   const saveProfile = useCallback((next: Profile) => {
     writeProfile(sanitizeProfile(next));
-  }, []);
-
-  const acceptQuest = useCallback((quest: AcceptedQuest) => {
-    writeQuests([quest, ...readQuests()]);
-    const chat = buildQuestChat(quest);
-    const existing = readChats().filter((item) => item.id !== chat.id);
-    writeChats([chat, ...existing]);
-    return chat.id;
   }, []);
 
   const sendMessage = useCallback((chatId: string, body: string) => {
@@ -100,8 +79,8 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ profile, quests, chats, saveProfile, acceptQuest, sendMessage, markRead }),
-    [profile, quests, chats, saveProfile, acceptQuest, sendMessage, markRead],
+    () => ({ profile, chats, saveProfile, sendMessage, markRead }),
+    [profile, chats, saveProfile, sendMessage, markRead],
   );
 
   return <ProfileContext.Provider value={value}>{children}</ProfileContext.Provider>;

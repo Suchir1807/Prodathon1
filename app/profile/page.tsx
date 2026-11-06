@@ -8,7 +8,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 
 import { ProfileLogoutButton } from "@/components/profile-logout-button";
 import { ProfileSkeleton } from "@/components/ui/loading-skeletons";
-import { BuilderMilestones } from "@/components/builder-milestones";
+import { SkillMilestones } from "@/components/skill-milestones";
 import { ToggleChip } from "@/components/toggle-chip";
 import { UserAvatar } from "@/components/user-avatar";
 import {
@@ -102,7 +102,7 @@ function IdList({ label, skills }: { label: string; skills: string[] }) {
 
 export default function ProfilePage() {
   const { data: session, update: updateSession } = useSession();
-  const { saveProfile, quests } = useProfile();
+  const { saveProfile } = useProfile();
   const username = session?.user?.name ?? "";
 
   const [displayName, setDisplayName] = useState("");
@@ -110,7 +110,7 @@ export default function ProfilePage() {
   const [skillsLearn, setSkillsLearn] = useState<string[]>([]);
   const [domainInterests, setDomainInterests] = useState<string[]>([]);
   const [socialStats, setSocialStats] = useState<ProfileSocialStats>({
-    sprints: 0,
+    sessions: 0,
     followers: 0,
     following: 0,
   });
@@ -118,7 +118,9 @@ export default function ProfilePage() {
     followers: [],
     following: [],
   });
-  const [badges, setBadges] = useState<Array<{ id: string; skill: string; questTitle: string; verifiedAt: string }>>([]);
+  const [badges, setBadges] = useState<Array<{ id: string; skill: string; sessionTopic: string; verifiedAt: string }>>([]);
+  const [completedSessions, setCompletedSessions] = useState(0);
+  const [creditBalance, setCreditBalance] = useState(0);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -155,7 +157,8 @@ export default function ProfilePage() {
           domainInterests?: unknown;
           socialStats?: Partial<ProfileSocialStats>;
           socialUsers?: Partial<ProfileSocialUsers>;
-          badges?: Array<{ id: string; skill: string; questTitle: string; verifiedAt: string }>;
+          badges?: Array<{ id: string; skill: string; sessionTopic: string; verifiedAt: string }>;
+          creditBalance?: number;
           error?: string;
         };
 
@@ -175,10 +178,12 @@ export default function ProfilePage() {
           setSkillsLearn(nextLearn);
           setDomainInterests(nextDomains);
           setSocialStats({
-            sprints: socialCount(data.socialStats?.sprints),
+            sessions: socialCount(data.socialStats?.sessions),
             followers: socialCount(data.socialStats?.followers),
             following: socialCount(data.socialStats?.following),
           });
+          setCompletedSessions(socialCount(data.socialStats?.sessions));
+          setCreditBalance(socialCount(data.creditBalance));
           setSocialUsers({
             followers: data.socialUsers?.followers ?? [],
             following: data.socialUsers?.following ?? [],
@@ -309,10 +314,10 @@ export default function ProfilePage() {
         <div className="flex flex-col gap-5 lg:col-span-2">
           <div>
             <p className="text-xs font-medium tracking-[0.18em] text-slate-500 uppercase">
-              Profile
+              Skill Passport
             </p>
             <h1 className="mt-2 text-2xl font-semibold tracking-tight text-white">
-              Edit your skill graph
+              Edit your learning profile
             </h1>
             <p className="mt-2 max-w-xl text-sm text-slate-400">
               {username ? (
@@ -320,7 +325,7 @@ export default function ProfilePage() {
                   Signed in as <span className="text-white">{formatUsername(username)}</span>.
                 </>
               ) : (
-                "Update what you teach, want to learn, and the domains you care about."
+                "Show what you can offer, what you want to learn, and the topics that matter to you."
               )}
             </p>
           </div>
@@ -350,8 +355,8 @@ export default function ProfilePage() {
           </section>
 
           <SkillChips
-            title="Skills I Have"
-            description="What you can teach a partner this week."
+            title="Skills I Can Offer"
+            description="Knowledge you are ready to share in a Session."
             options={SKILLS_I_HAVE}
             selected={skillsHave}
             onToggle={(skillName) => {
@@ -364,7 +369,7 @@ export default function ProfilePage() {
           />
           <SkillChips
             title="Skills I Want to Learn"
-            description="What you want the quest to make you practice."
+            description="Skills you would like to learn from another member."
             options={SKILLS_I_WANT}
             selected={skillsLearn}
             onToggle={(skillName) => {
@@ -377,7 +382,7 @@ export default function ProfilePage() {
           />
           <SkillChips
             title="Domain Interests"
-            description="The kinds of products you actually want to build."
+            description="Topics you would like to explore with others."
             options={DOMAIN_INTERESTS}
             selected={domainInterests}
             onToggle={(skillName) => {
@@ -393,7 +398,7 @@ export default function ProfilePage() {
         <aside className="lg:col-span-1">
           <div className="sticky top-20 rounded-xl border border-[#ccff00]/25 bg-[#10182b]/55 p-4 shadow-[0_0_24px_rgba(204,255,0,0.08)] backdrop-blur-xl">
             <div className="flex items-center justify-between">
-              <p className="text-[11px] tracking-wide text-slate-500 uppercase">Live ID card</p>
+              <p className="text-[11px] tracking-wide text-slate-500 uppercase">Passport preview</p>
               <span className="flex items-center gap-1.5 text-[11px] text-[#ccff00]">
                 <span className="size-1.5 animate-pulse rounded-full bg-[#ccff00]" />
                 Preview
@@ -409,6 +414,7 @@ export default function ProfilePage() {
               </div>
             </div>
             <ProfileSocialStatsRow stats={socialStats} users={socialUsers} />
+            <p className="mt-3 text-center text-xs text-slate-400">{creditBalance} time credits</p>
             <div className="mt-4 space-y-3">
               <IdList label="Can teach" skills={skillsHave} />
               <IdList label="Wants to learn" skills={skillsLearn} />
@@ -417,7 +423,7 @@ export default function ProfilePage() {
             <section className="mt-4 border-t border-white/8 pt-4">
               <p className="text-[10px] tracking-wide text-slate-500 uppercase">Verified skills</p>
               <div className="mt-2 flex flex-wrap gap-1.5">
-                {badges.length ? badges.map((badge) => <span key={badge.id} title={`${badge.questTitle} · ${new Date(badge.verifiedAt).toLocaleDateString()}`} className="rounded-full border border-emerald-300/20 bg-emerald-300/[0.06] px-2 py-1 text-[10px] text-emerald-100">{badge.skill}</span>) : <span className="text-[11px] text-slate-600">Earn a badge by completing a quest with a partner.</span>}
+                {badges.length ? badges.map((badge) => <span key={badge.id} title={`${badge.sessionTopic} · ${new Date(badge.verifiedAt).toLocaleDateString()}`} className="rounded-full border border-emerald-300/20 bg-emerald-300/[0.06] px-2 py-1 text-[10px] text-emerald-100">{badge.skill}</span>) : <span className="text-[11px] text-slate-600">Earn a skill endorsement through a reviewed Session.</span>}
               </div>
             </section>
             <Button
@@ -432,9 +438,9 @@ export default function ProfilePage() {
         </aside>
       </form>
       <div className="mx-auto w-full max-w-6xl px-4 md:px-6">
-        <BuilderMilestones
+        <SkillMilestones
           profile={{ name: displayName, canTeach: skillsHave, wantsToLearn: skillsLearn, domains: domainInterests }}
-          questCount={quests.length}
+          completedSessions={completedSessions}
         />
       </div>
       <ProfileLogoutButton />

@@ -17,7 +17,7 @@ export async function generateGeminiJson(
   prompt: string,
 ): Promise<unknown> {
   const response = await getClient().models.generateContent({
-    model: "gemini-2.5-flash",
+    model: "gemini-3.8-flash",
     contents: prompt,
     config: {
       systemInstruction,

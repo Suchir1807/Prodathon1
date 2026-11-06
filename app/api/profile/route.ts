@@ -4,6 +4,8 @@ import { Types } from "mongoose";
 
 import { authOptions } from "@/lib/auth";
 import connectDB from "@/lib/mongodb";
+import Badge from "@/models/Badge";
+import "@/models/Quest";
 import { profileSchema } from "@/lib/validation/schemas";
 import User from "@/models/User";
 import Workspace from "@/models/Workspace";
@@ -77,11 +79,18 @@ export async function GET() {
 
     const followers = serializeSocialUsers(user.followers);
     const following = serializeSocialUsers(user.following);
-    const sprints = await Workspace.countDocuments({
-      users: user._id,
-      type: "sprint",
-      status: "completed",
-    });
+    const [sprints, badges] = await Promise.all([
+      Workspace.countDocuments({
+        users: user._id,
+        type: "sprint",
+        status: "completed",
+      }),
+      Badge.find({ user: user._id })
+        .sort({ verifiedAt: -1 })
+        .limit(30)
+        .populate("quest", "title")
+        .lean(),
+    ]);
     return NextResponse.json({
       ...profileBody(user),
       socialStats: {
@@ -90,6 +99,12 @@ export async function GET() {
         following: following.length,
       },
       socialUsers: { followers, following },
+      badges: badges.map((badge) => ({
+        id: badge._id.toString(),
+        skill: badge.skill,
+        questTitle: (badge.quest as unknown as { title?: string } | null)?.title ?? "Completed quest",
+        verifiedAt: badge.verifiedAt.toISOString(),
+      })),
     });
   } catch (error) {
     console.error("Profile GET error:", error);

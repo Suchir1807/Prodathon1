@@ -8,6 +8,8 @@ import { UserAvatar } from "@/components/user-avatar";
 import { authOptions } from "@/lib/auth";
 import connectDB from "@/lib/mongodb";
 import { formatUsername } from "@/lib/profile";
+import Badge from "@/models/Badge";
+import "@/models/Quest";
 import User from "@/models/User";
 
 export const metadata: Metadata = { title: "Founder Profile" };
@@ -34,6 +36,11 @@ export default async function PublicProfilePage({
   const isFollowing = Boolean(
     viewer && (user.followers ?? []).some((followerId) => followerId.toString() === viewer._id.toString()),
   );
+  const badges = await Badge.find({ user: user._id })
+    .sort({ verifiedAt: -1 })
+    .limit(30)
+    .populate("quest", "title")
+    .lean();
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8 md:px-6">
@@ -59,6 +66,16 @@ export default async function PublicProfilePage({
           <SkillList title="Wants to learn" skills={user.skillsLearn ?? []} />
           <SkillList title="Domains" skills={user.domainInterests ?? []} />
         </div>
+        <section className="mt-8 border-t border-white/8 pt-6">
+          <h2 className="text-xs font-medium tracking-wide text-slate-400 uppercase">Verified skills</h2>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {badges.length ? badges.map((badge) => (
+              <span key={badge._id.toString()} title={`Earned for ${((badge.quest as unknown as { title?: string } | null)?.title ?? "a completed quest")}`} className="rounded-full border border-emerald-300/25 bg-emerald-300/[0.07] px-3 py-1.5 text-xs text-emerald-100">
+                {badge.skill} · verified
+              </span>
+            )) : <span className="text-xs text-slate-600">Complete a quest and get partner approval to earn your first badge.</span>}
+          </div>
+        </section>
       </section>
     </div>
   );

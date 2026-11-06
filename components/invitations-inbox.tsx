@@ -20,7 +20,6 @@ type InviteSender = {
 
 type PendingInvite = {
   id: string;
-  status: string;
   sender: InviteSender;
 };
 
@@ -37,11 +36,13 @@ export function InvitationsInbox() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await fetch("/api/invitations", { cache: "no-store" });
-      const data = (await response.json()) as { invitations?: PendingInvite[] };
-      if (response.ok) {
-        setInvites(data.invitations ?? []);
-      }
+      const response = await fetch("/api/partner-requests", { cache: "no-store" });
+      const data = (await response.json()) as { received?: PendingInvite[]; error?: string };
+      if (!response.ok) throw new Error(data.error ?? "Unable to load partner requests.");
+      setInvites(data.received ?? []);
+      setActionError("");
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Unable to load partner requests.");
     } finally {
       setLoading(false);
     }
@@ -66,14 +67,17 @@ export function InvitationsInbox() {
     setActingStatus(status);
     setActionError("");
     try {
-      const response = await fetch("/api/invitations", {
-        method: "PUT",
+      const response = await fetch("/api/partner-requests", {
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ invitationId, status }),
+        body: JSON.stringify({
+          requestId: invitationId,
+          action: status === "accepted" ? "accept" : "decline",
+          idempotencyKey: crypto.randomUUID(),
+        }),
       });
       const data = (await response.json()) as {
-        ok?: boolean;
-        partner?: InviteSender;
+        questId?: string;
         error?: string;
       };
 
@@ -81,7 +85,7 @@ export function InvitationsInbox() {
 
       if (status === "accepted") {
         setOpen(false);
-        router.push("/workspace");
+        if (data.questId) router.push(`/workspace?questId=${encodeURIComponent(data.questId)}`);
         return;
       }
 
@@ -124,7 +128,7 @@ export function InvitationsInbox() {
           />
           <div className="absolute right-0 z-50 mt-2 w-80 rounded-xl border border-white/10 bg-[#0e1526]/95 p-3 shadow-xl backdrop-blur-xl">
             <p className="px-1 text-xs font-medium tracking-wide text-slate-400 uppercase">
-              Invitations
+              Build requests
             </p>
             {actionError ? <p role="alert" className="mt-2 px-1 text-xs text-rose-400">{actionError}</p> : null}
             {loading ? (
@@ -154,7 +158,7 @@ export function InvitationsInbox() {
                         <UserAvatar name={label} className="size-8 text-[10px]" />
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm text-white">{label}</p>
-                          <p className="text-[11px] text-slate-500">Partner invite</p>
+                          <p className="text-[11px] text-slate-500">A shared quest is ready to generate</p>
                         </div>
                       </div>
                       <div className="mt-3 flex gap-2">

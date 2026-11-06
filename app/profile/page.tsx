@@ -118,6 +118,7 @@ export default function ProfilePage() {
     followers: [],
     following: [],
   });
+  const [badges, setBadges] = useState<Array<{ id: string; skill: string; questTitle: string; verifiedAt: string }>>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -154,6 +155,7 @@ export default function ProfilePage() {
           domainInterests?: unknown;
           socialStats?: Partial<ProfileSocialStats>;
           socialUsers?: Partial<ProfileSocialUsers>;
+          badges?: Array<{ id: string; skill: string; questTitle: string; verifiedAt: string }>;
           error?: string;
         };
 
@@ -181,6 +183,7 @@ export default function ProfilePage() {
             followers: data.socialUsers?.followers ?? [],
             following: data.socialUsers?.following ?? [],
           });
+          setBadges(data.badges ?? []);
           reset({
             displayName: nextName,
             skillsHave: nextHave,
@@ -411,6 +414,12 @@ export default function ProfilePage() {
               <IdList label="Wants to learn" skills={skillsLearn} />
               <IdList label="Domains" skills={domainInterests} />
             </div>
+            <section className="mt-4 border-t border-white/8 pt-4">
+              <p className="text-[10px] tracking-wide text-slate-500 uppercase">Verified skills</p>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {badges.length ? badges.map((badge) => <span key={badge.id} title={`${badge.questTitle} · ${new Date(badge.verifiedAt).toLocaleDateString()}`} className="rounded-full border border-emerald-300/20 bg-emerald-300/[0.06] px-2 py-1 text-[10px] text-emerald-100">{badge.skill}</span>) : <span className="text-[11px] text-slate-600">Earn a badge by completing a quest with a partner.</span>}
+              </div>
+            </section>
             <Button
               type="submit"
               loading={saving || isSubmitting}

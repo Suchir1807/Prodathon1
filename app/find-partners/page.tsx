@@ -105,17 +105,23 @@ export default function FindPartnersPage() {
 
     async function loadPartners() {
       try {
-        const response = await fetch("/api/users", { cache: "no-store" });
+        const [response, requestsResponse] = await Promise.all([
+          fetch("/api/users", { cache: "no-store" }),
+          fetch("/api/partner-requests", { cache: "no-store" }),
+        ]);
         const data = (await response.json()) as PartnerUser[] | { error?: string; users?: PartnerUser[] };
+        const requestData = (await requestsResponse.json()) as { sent?: Array<{ recipient: { id: string } }> };
         if (!response.ok) {
           const message = !Array.isArray(data) ? data.error : undefined;
           if (!cancelled) setError(message ?? "Could not load partners.");
           return;
         }
+        if (!requestsResponse.ok) throw new Error("Could not load your pending build requests.");
         const list = Array.isArray(data) ? data : (data.users ?? []);
         if (!cancelled) {
           setPartners(list);
           setFollowingIds(new Set(list.filter((partner) => partner.isFollowing).map((partner) => partner._id)));
+          setSentIds((requestData.sent ?? []).map((request) => request.recipient.id));
         }
       } catch {
         if (!cancelled) setError("Network error loading partners.");
@@ -130,16 +136,16 @@ export default function FindPartnersPage() {
     };
   }, []);
 
-  async function sendInvite(receiverId: string) {
+  async function sendPartnerRequest(receiverId: string) {
     if (inviteRef.current) return;
     inviteRef.current = true;
     setPendingId(receiverId);
     setInviteError("");
     try {
-      const response = await fetch("/api/invitations", {
+      const response = await fetch("/api/partner-requests", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ receiverId }),
+        body: JSON.stringify({ recipientId: receiverId, idempotencyKey: crypto.randomUUID() }),
       });
       const data = (await response.json()) as { error?: string };
       if (!response.ok) throw new Error(data.error ?? "Unable to send invite.");
@@ -369,10 +375,10 @@ export default function FindPartnersPage() {
                         size="sm"
                         disabled={pending || sent}
                         loading={pending}
-                        onClick={() => void sendInvite(partner._id)}
+                        onClick={() => void sendPartnerRequest(partner._id)}
                         className="flex-1"
                       >
-                        {sent ? <><Check /> Invite sent</> : pending ? "Sending…" : <>Invite to build <ArrowRight /></>}
+                        {sent ? <><Check /> Request sent</> : pending ? "Sending…" : <>Request to build <ArrowRight /></>}
                       </Button>
                       <Button
                         size="sm"

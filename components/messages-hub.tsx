@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { ArrowLeft, Loader2, MessageSquare, Send } from "lucide-react";
@@ -26,7 +27,12 @@ type PersistedMessage = {
   timestamp: string;
 };
 
-export function MessagesHub({ initialChatId }: { initialChatId?: string }) {
+export function MessagesHub({ initialChatId, initialQuestId }: { initialChatId?: string; initialQuestId?: string }) {
+  if (initialQuestId) return <QuestMessagesHub questId={initialQuestId} />;
+  return <DirectMessagesHub initialChatId={initialChatId} />;
+}
+
+function DirectMessagesHub({ initialChatId }: { initialChatId?: string }) {
   const router = useRouter();
   const { data: session } = useSession();
   const currentUserId = session?.user?.id ?? "";
@@ -272,6 +278,103 @@ export function MessagesHub({ initialChatId }: { initialChatId?: string }) {
           </div>
         )}
       </section>
+    </div>
+  );
+}
+
+function QuestMessagesHub({ questId }: { questId: string }) {
+  const { data: session } = useSession();
+  const currentUserId = session?.user?.id ?? "";
+  const [partnerName, setPartnerName] = useState("Quest partner");
+  const [messages, setMessages] = useState<PersistedMessage[]>([]);
+  const [draft, setDraft] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState("");
+  const scroller = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    let active = true;
+    const refresh = async () => {
+      if (document.visibilityState !== "visible") return;
+      try {
+        const [questResponse, messageResponse] = await Promise.all([
+          fetch(`/api/quests/${encodeURIComponent(questId)}`, { cache: "no-store" }),
+          fetch(`/api/quests/${encodeURIComponent(questId)}/messages`, { cache: "no-store" }),
+        ]);
+        const [questData, messageData] = await Promise.all([questResponse.json(), messageResponse.json()]);
+        if (!questResponse.ok) throw new Error(questData.error ?? "Unable to load quest.");
+        if (!messageResponse.ok) throw new Error(messageData.error ?? "Unable to load messages.");
+        if (!active) return;
+        const partner = questData.quest.members.find((member: { userId: string }) => member.userId !== currentUserId);
+        setPartnerName(partner?.displayName?.trim() || partner?.username || "Quest partner");
+        setMessages(messageData.messages ?? []);
+        setError("");
+      } catch (cause) {
+        if (active) setError(cause instanceof Error ? cause.message : "Unable to load quest messages.");
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+    void refresh();
+    const interval = window.setInterval(() => void refresh(), 4000);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [questId, currentUserId]);
+
+  useEffect(() => {
+    if (scroller.current) scroller.current.scrollTop = scroller.current.scrollHeight;
+  }, [messages.length]);
+
+  async function send(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const content = draft.trim();
+    if (!content || sending) return;
+    setSending(true);
+    setError("");
+    try {
+      const response = await fetch(`/api/quests/${encodeURIComponent(questId)}/messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content, idempotencyKey: crypto.randomUUID() }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error ?? "Unable to send message.");
+      setMessages((current) => [...current.filter((message) => message.id !== result.message.id), result.message]);
+      setDraft("");
+      toast.success("Message delivered");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to send message.");
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return (
+    <div className="flex h-[calc(100dvh-3.5rem)] flex-col overflow-hidden bg-[#07110c]">
+      <header className="flex items-center justify-between border-b border-white/8 px-4 py-3">
+        <div><p className="text-[10px] font-semibold tracking-[0.16em] text-emerald-300/70 uppercase">Quest conversation</p><h1 className="mt-1 text-sm font-semibold text-white">{partnerName}</h1></div>
+        <Link href={`/workspace?questId=${encodeURIComponent(questId)}`} className="text-xs text-emerald-200 hover:underline">Back to workspace</Link>
+      </header>
+      <div ref={scroller} className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-4">
+        {loading ? <p className="flex items-center justify-center gap-2 py-10 text-sm text-slate-400"><Loader2 className="size-4 animate-spin" />Loading conversation…</p> : null}
+        {messages.map((message) => {
+          const mine = message.senderId === currentUserId;
+          return <div key={message.id} className={cn("flex", mine ? "justify-end" : "justify-start")}><div className={cn("max-w-[85%] rounded-2xl px-3 py-2 text-sm sm:max-w-[70%]", mine ? "border border-emerald-300/30 bg-emerald-300/[0.08] text-white" : "bg-slate-900/80 text-slate-100")}><p className="whitespace-pre-wrap break-words">{message.content}</p><p className="mt-1 text-[10px] text-slate-500">{new Date(message.timestamp).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</p></div></div>;
+        })}
+        {!loading && messages.length === 0 ? <p className="py-10 text-center text-sm text-slate-500">Say hello and align on your first build step.</p> : null}
+      </div>
+      {error ? <p role="alert" className="px-4 pb-2 text-xs text-rose-300">{error}</p> : null}
+      <form className="border-t border-white/8 p-4" onSubmit={(event) => void send(event)}>
+        <div className="glass flex items-center gap-2 rounded-full px-2 py-1">
+          <Input value={draft} onChange={(event) => setDraft(event.target.value)} placeholder={`Message ${partnerName}`} aria-label="Message quest partner" maxLength={5000} className="h-9 border-0 bg-transparent shadow-none focus-visible:ring-0" />
+          <Button type="submit" size="icon-sm" className="rounded-full" aria-label="Send message" disabled={!draft.trim() || sending} loading={sending}><Send /></Button>
+        </div>
+      </form>
     </div>
   );
 }

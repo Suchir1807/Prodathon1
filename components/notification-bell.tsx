@@ -8,9 +8,11 @@ import { UserAvatar } from "@/components/user-avatar";
 
 type FollowNotification = {
   id: string;
-  type: "follow";
+  type: "follow" | "partner_request" | "request_accepted" | "quest_ready" | "task_completed" | "new_message" | "curveball_unlocked" | "submission" | "review";
   isRead: boolean;
   createdAt: string;
+  questId: string | null;
+  resourceId: string | null;
   sender: {
     id: string;
     username: string;
@@ -175,6 +177,22 @@ export function NotificationBell() {
                   const name = sender.displayName.trim() || sender.username;
                   const followsBack =
                     sender.isFollowing || followingBack.includes(sender.id);
+                  const copy: Record<FollowNotification["type"], string> = {
+                    follow: "started following you.",
+                    partner_request: "sent you a build request.",
+                    request_accepted: "accepted your build request.",
+                    quest_ready: "your shared quest is ready.",
+                    task_completed: "completed a quest task.",
+                    new_message: "sent you a quest message.",
+                    curveball_unlocked: "your quest curveball has unlocked.",
+                    submission: "submitted work for your review.",
+                    review: "left a review on your quest.",
+                  };
+                  const destination = notification.questId
+                    ? `/workspace?questId=${encodeURIComponent(notification.questId)}`
+                    : notification.type === "partner_request"
+                      ? "/find-partners"
+                      : `/profile/${encodeURIComponent(sender.id)}`;
                   return (
                     <li
                       key={notification.id}
@@ -184,15 +202,15 @@ export function NotificationBell() {
                     >
                       <UserAvatar name={name} className="size-9 text-[10px]" />
                       <p className="min-w-0 flex-1 text-xs leading-relaxed text-slate-300">
-                        <span className="font-medium text-white">{name}</span> started following you.
+                        <span className="font-medium text-white">{name}</span> {copy[notification.type]}
                       </p>
-                      {followsBack ? (
+                      {notification.type !== "follow" || followsBack ? (
                         <Link
-                          href={`/profile/${encodeURIComponent(sender.id)}`}
+                          href={destination}
                           onClick={() => setOpen(false)}
                           className="shrink-0 text-[10px] text-[#ccff00] hover:underline"
                         >
-                          View
+                          {notification.questId ? "Open quest" : "View"}
                         </Link>
                       ) : (
                         <button

@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { SlidersHorizontal } from "lucide-react";
 
 import { PartnerCard } from "@/components/partner-card";
@@ -12,42 +11,12 @@ import {
   type PartnerFiltersState,
 } from "@/components/partner-filters";
 import { useIsClient, useProfile } from "@/components/profile-provider";
-import { QuestDialog, type QuestSession } from "@/components/quest-dialog";
 import { Button } from "@/components/ui/button";
 import { matchInsight } from "@/lib/match";
 import { profileReady } from "@/lib/profile";
-import { writeActiveWorkspace } from "@/lib/workspace";
-import type { Partner, Profile, Quest, QuestResponse } from "@/lib/types";
+import type { Partner } from "@/lib/types";
 import { publicUserToPartner, type PublicUser } from "@/lib/user-partner";
 import { cn } from "@/lib/utils";
-
-async function requestQuest(viewer: Profile, partner: Partner) {
-  const started = Date.now();
-  const response = await fetch("/api/generate-quest", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ studentA: viewer, studentB: partner }),
-  });
-  const payload = (await response.json()) as QuestResponse & { error?: string };
-  const elapsed = Date.now() - started;
-  if (elapsed < 1600) {
-    await new Promise((resolve) => window.setTimeout(resolve, 1600 - elapsed));
-  }
-  if (!response.ok) {
-    throw new Error(payload.error || "Could not generate a quest.");
-  }
-  return payload;
-}
-
-function acceptedQuest(partner: Partner, quest: Quest) {
-  return {
-    id: crypto.randomUUID(),
-    acceptedAt: new Date().toISOString(),
-    partnerId: partner.id,
-    partnerName: partner.name,
-    quest,
-  };
-}
 
 function passesFilters(
   partner: Partner,
@@ -86,23 +55,17 @@ function passesFilters(
 }
 
 export function PartnerBoard() {
-  const router = useRouter();
-  const { profile, acceptQuest } = useProfile();
+  const { profile } = useProfile();
   const isClient = useIsClient();
   const [filters, setFilters] = useState<PartnerFiltersState>(EMPTY_FILTERS);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [open, setOpen] = useState(false);
-  const [session, setSession] = useState<QuestSession | null>(null);
   const [directory, setDirectory] = useState<Partner[]>([]);
   const [sentInvites, setSentInvites] = useState<Set<string>>(new Set());
   const [pendingInviteId, setPendingInviteId] = useState<string | null>(null);
   const [followingIds, setFollowingIds] = useState<Set<string>>(new Set());
   const [pendingFollowId, setPendingFollowId] = useState<string | null>(null);
   const [actionError, setActionError] = useState("");
-  const requestId = useRef(0);
   const inviteRef = useRef(false);
-  const generationRef = useRef(false);
-  const acceptRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -138,20 +101,21 @@ export function PartnerBoard() {
       .sort((left, right) => right.insight.score - left.insight.score);
   }, [profile, filters, complementary, directory]);
 
-  async function sendInvite(partner: Partner) {
+  async function requestToBuild(partner: Partner) {
     if (inviteRef.current) return;
     inviteRef.current = true;
     setPendingInviteId(partner.id);
     setActionError("");
     try {
-      const response = await fetch("/api/invitations", {
+      const response = await fetch("/api/partner-requests", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ receiverId: partner.id }),
+        body: JSON.stringify({ recipientId: partner.id, idempotencyKey: crypto.randomUUID() }),
       });
       const data = (await response.json()) as { error?: string };
       if (!response.ok) throw new Error(data.error ?? "Unable to send invite.");
       setSentInvites((current) => new Set(current).add(partner.id));
+      setActionError("");
     } catch (error) {
       setActionError(error instanceof Error ? error.message : "Unable to send invite.");
     } finally {
@@ -193,69 +157,13 @@ export function PartnerBoard() {
     }
   }
 
-  async function generate(partner: Partner) {
-    if (generationRef.current) return;
-    generationRef.current = true;
-    const id = requestId.current + 1;
-    requestId.current = id;
-    setOpen(true);
-    setSession({
-      partner,
-      loading: true,
-      error: null,
-      result: null,
-      accepted: false,
-    });
-    try {
-      const payload = await requestQuest(profile, partner);
-      if (requestId.current !== id) return;
-      setSession({
-        partner,
-        loading: false,
-        error: null,
-        result: payload,
-        accepted: false,
-      });
-    } catch (cause) {
-      if (requestId.current !== id) return;
-      setSession({
-        partner,
-        loading: false,
-        error: cause instanceof Error ? cause.message : "Could not generate a quest.",
-        result: null,
-        accepted: false,
-      });
-    } finally {
-      generationRef.current = false;
-    }
-  }
-
-  async function accept(quest: Quest) {
-    if (acceptRef.current || !session?.result?.mission) return;
-    acceptRef.current = true;
-    try {
-      const mission = session.result.mission;
-      writeActiveWorkspace({
-        ...mission,
-        partnerName: session.partner.name,
-        acceptedAt: new Date().toISOString(),
-      });
-      acceptQuest(acceptedQuest(session.partner, quest));
-      setSession((current) => (current ? { ...current, accepted: true } : current));
-      await new Promise((resolve) => window.setTimeout(resolve, 1500));
-      router.push("/workspace");
-    } finally {
-      acceptRef.current = false;
-    }
-  }
-
   return (
     <div className="mx-auto max-w-6xl px-4 py-5 md:px-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="max-w-xl text-sm text-slate-400">
-            Filter by skills and domains, then propose a match. Accepting a quest boots Mission Control with a
-            Gemini-generated 72-hour sprint.
+            Find someone whose strengths complement yours and send a build request. Once they accept, Skillin
+            generates a shared quest tailored to both profiles.
           </p>
         </div>
         <Button
@@ -309,17 +217,13 @@ export function PartnerBoard() {
                   key={partner.id}
                   partner={partner}
                   insight={insight}
-                  onSendInvite={() => void sendInvite(partner)}
-                  invitePending={pendingInviteId === partner.id}
-                  inviteSent={sentInvites.has(partner.id)}
                   isFollowing={followingIds.has(partner.id)}
                   followPending={pendingFollowId === partner.id}
                   onToggleFollow={() => void toggleFollow(partner)}
-                  proposePending={Boolean(session?.loading && session.partner.id === partner.id)}
-                  proposeDisabled={Boolean(session?.loading)}
-                  onPropose={() => {
-                    void generate(partner);
-                  }}
+                  requestPending={pendingInviteId === partner.id}
+                  requestSent={sentInvites.has(partner.id)}
+                  proposeDisabled={pendingInviteId !== null || sentInvites.has(partner.id)}
+                  onRequest={() => void requestToBuild(partner)}
                 />
               ))}
             </div>
@@ -327,16 +231,6 @@ export function PartnerBoard() {
         </div>
       </div>
 
-      <QuestDialog
-        viewer={profile}
-        session={session}
-        open={open}
-        onOpenChange={setOpen}
-        onRetry={() => {
-          if (session) void generate(session.partner);
-        }}
-        onAccept={accept}
-      />
     </div>
   );
 }

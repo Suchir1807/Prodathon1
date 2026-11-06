@@ -38,26 +38,22 @@ function SkillRow({
 export function PartnerCard({
   partner,
   insight,
-  onPropose,
-  onSendInvite,
-  invitePending,
-  inviteSent,
+  onRequest,
+  requestPending,
+  requestSent,
   isFollowing,
   followPending,
   onToggleFollow,
-  proposePending = false,
   proposeDisabled = false,
 }: {
   partner: Partner;
   insight: MatchInsight;
-  onPropose: () => void;
-  onSendInvite?: () => void;
-  invitePending?: boolean;
-  inviteSent?: boolean;
+  onRequest: () => void;
+  requestPending?: boolean;
+  requestSent?: boolean;
   isFollowing?: boolean;
   followPending?: boolean;
   onToggleFollow?: () => void;
-  proposePending?: boolean;
   proposeDisabled?: boolean;
 }) {
   return (
@@ -77,17 +73,6 @@ export function PartnerCard({
         <SkillRow label="Wants to learn" skills={partner.wantsToLearn} highlighted={insight.youTeachThem} />
       </div>
       <div className="flex flex-wrap justify-end gap-3">
-        {onSendInvite ? (
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={invitePending || inviteSent}
-            loading={invitePending}
-            onClick={onSendInvite}
-          >
-            {inviteSent ? "Invite sent" : invitePending ? "Sending…" : "Send Invite"}
-          </Button>
-        ) : null}
         {onToggleFollow ? (
           <Button
             size="sm"
@@ -100,8 +85,8 @@ export function PartnerCard({
             {followPending ? "Updating…" : isFollowing ? "Following" : "Follow"}
           </Button>
         ) : null}
-        <Button size="sm" onClick={onPropose} loading={proposePending} disabled={proposeDisabled}>
-          {proposePending ? "Generating…" : "Propose Match"}
+        <Button size="sm" onClick={onRequest} loading={requestPending} disabled={proposeDisabled || requestSent}>
+          {requestSent ? "Request sent" : requestPending ? "Sending…" : "Request to build"}
         </Button>
       </div>
     </article>

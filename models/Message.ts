@@ -4,8 +4,11 @@ export interface IMessage {
   senderId: Types.ObjectId;
   receiverId: Types.ObjectId;
   workspaceId?: Types.ObjectId;
+  questId?: Types.ObjectId;
   content: string;
   timestamp: Date;
+  readAt?: Date | null;
+  idempotencyKey?: string;
 }
 
 const MessageSchema = new Schema<IMessage>(
@@ -25,14 +28,22 @@ const MessageSchema = new Schema<IMessage>(
       ref: "Workspace",
       index: true,
     },
+    questId: { type: Schema.Types.ObjectId, ref: "Quest", index: true },
     content: { type: String, required: true },
     timestamp: { type: Date, default: Date.now },
+    readAt: { type: Date, default: null },
+    idempotencyKey: { type: String, maxlength: 100 },
   },
   { timestamps: false },
 );
 
 MessageSchema.index({ senderId: 1, receiverId: 1, timestamp: 1 });
 MessageSchema.index({ workspaceId: 1, senderId: 1, receiverId: 1, timestamp: 1 });
+MessageSchema.index({ questId: 1, timestamp: 1 });
+MessageSchema.index(
+  { questId: 1, senderId: 1, idempotencyKey: 1 },
+  { unique: true, partialFilterExpression: { idempotencyKey: { $type: "string" } }, name: "quest_message_idempotency" },
+);
 
 const Message: Model<IMessage> =
   (mongoose.models.Message as Model<IMessage> | undefined) ??

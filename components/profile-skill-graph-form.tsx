@@ -17,6 +17,7 @@ import type { Profile } from "@/lib/types";
 import { profileSchema, type ProfileValues } from "@/lib/validation/schemas";
 import { cn } from "@/lib/utils";
 import { SkillPicker } from "@/components/skill-picker";
+import type { z } from "zod";
 
 export function ProfileSkillGraphForm({
   mode,
@@ -49,13 +50,13 @@ export function ProfileSkillGraphForm({
     setValue,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<ProfileValues>({
+  } = useForm<z.input<typeof profileSchema>, unknown, ProfileValues>({
     resolver: zodResolver(profileSchema),
     mode: "onBlur",
     defaultValues: live,
   });
 
-  function setSkills(field: "skillsHave" | "skillsLearn" | "domainInterests", values: string[]) {
+  function setSkills(field: "skillsHave" | "skillsLearn", values: string[]) {
     setValue(field, values, { shouldDirty: true, shouldValidate: true });
   }
 
@@ -112,8 +113,8 @@ export function ProfileSkillGraphForm({
             Signed in as{" "}
             <span className="text-white">{formatUsername(username)}</span>.
             {isOnboarding
-              ? " The card on the right is how partners will see you."
-              : " Update what you teach, want to learn, and the domains you care about."}
+              ? " Choose skills you can share and skills you want to learn."
+              : " Update what you can offer and what you want to learn."}
           </p>
           {isOnboarding ? (
             <ol className="mt-6 grid max-w-2xl grid-cols-3 gap-2" aria-label="Profile setup progress">

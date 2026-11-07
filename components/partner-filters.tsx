@@ -11,20 +11,15 @@ import {
 } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { DOMAIN_INTERESTS, SKILLS_I_HAVE, SKILLS_I_WANT } from "@/lib/catalog";
+import { SKILL_CATEGORIES, type SkillCategory } from "@/lib/skill-categories";
 import { cn } from "@/lib/utils";
 
-function unique(values: string[]) {
-  return [...new Set(values)];
-}
-
-const TEACH_OPTIONS = unique([...SKILLS_I_HAVE]);
-const LEARN_OPTIONS = unique([...SKILLS_I_WANT]);
+const CATEGORY_OPTIONS = Object.keys(SKILL_CATEGORIES) as SkillCategory[];
 
 export type PartnerFiltersState = {
   query: string;
   complementaryOnly: boolean;
-  domains: string[];
+  categories: SkillCategory[];
   canTeach: string[];
   wantsToLearn: string[];
 };
@@ -32,7 +27,7 @@ export type PartnerFiltersState = {
 export const EMPTY_FILTERS: PartnerFiltersState = {
   query: "",
   complementaryOnly: true,
-  domains: [],
+  categories: [],
   canTeach: [],
   wantsToLearn: [],
 };
@@ -138,36 +133,30 @@ export function PartnerFilters({
         </span>
       </button>
 
-      <Accordion type="multiple" defaultValue={["domains"]} className="border-t border-white/8">
+      <Accordion type="multiple" defaultValue={["categories"]} className="border-t border-white/8">
         <FilterGroup
-          id="domains"
-          title="Domain interests"
-          options={DOMAIN_INTERESTS}
-          selected={filters.domains}
-          onToggle={(value) =>
-            onChange({ ...filters, domains: toggleInList(filters.domains, value) })
-          }
+          id="categories"
+          title="Skill categories"
+          options={CATEGORY_OPTIONS}
+          selected={filters.categories}
+          onToggle={(value) => onChange({
+            ...filters,
+            categories: toggleInList(filters.categories, value as SkillCategory),
+          })}
         />
         <FilterGroup
           id="teach"
           title="Can teach"
-          options={TEACH_OPTIONS}
+          options={[...new Set(Object.values(SKILL_CATEGORIES).flat())]}
           selected={filters.canTeach}
-          onToggle={(value) =>
-            onChange({ ...filters, canTeach: toggleInList(filters.canTeach, value) })
-          }
+          onToggle={(value) => onChange({ ...filters, canTeach: toggleInList(filters.canTeach, value) })}
         />
         <FilterGroup
           id="learn"
           title="Wants to learn"
-          options={LEARN_OPTIONS}
+          options={[...new Set(Object.values(SKILL_CATEGORIES).flat())]}
           selected={filters.wantsToLearn}
-          onToggle={(value) =>
-            onChange({
-              ...filters,
-              wantsToLearn: toggleInList(filters.wantsToLearn, value),
-            })
-          }
+          onToggle={(value) => onChange({ ...filters, wantsToLearn: toggleInList(filters.wantsToLearn, value) })}
         />
       </Accordion>
     </div>

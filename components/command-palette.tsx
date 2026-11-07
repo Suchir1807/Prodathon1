@@ -6,7 +6,6 @@ import {
   ArrowRight,
   Clock3,
   Command,
-  Compass,
   CircleHelp,
   LayoutDashboard,
   MessageSquare,
@@ -27,7 +26,6 @@ import { Input } from "@/components/ui/input";
 const COMMANDS = [
   { action: "help-now", label: "Help Now", detail: "Get an on-demand skill micro-session", icon: CircleHelp },
   { href: "/dashboard", label: "Dashboard", detail: "Your learning network", icon: LayoutDashboard },
-  { href: "/profile", label: "Profile", detail: "View your learning overview or edit your skills", icon: Compass },
   { href: "/find-partners", label: "Find partners", detail: "Match by complementary skills", icon: UsersRound },
   { href: "/asks", label: "Asks", detail: "Find or publish a skill Ask", icon: CircleHelp },
   { href: "/sessions", label: "Sessions", detail: "Book time and earn credits", icon: Clock3 },
@@ -108,13 +106,13 @@ export function CommandPalette() {
               const Icon = item.icon;
               return (
                 <button
-                  key={item.href ?? item.action}
+                  key={"href" in item ? item.href : item.action}
                   type="button"
-                  aria-current={item.href && pathname === item.href ? "page" : undefined}
+                  aria-current={"href" in item && pathname === item.href ? "page" : undefined}
                   onClick={() => {
                     setOpen(false);
                     if ("action" in item) window.dispatchEvent(new Event("skillin:help-now"));
-                    else if (item.href) router.push(item.href);
+                    else router.push(item.href);
                   }}
                   className="group flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-white/[0.06] focus-visible:bg-white/[0.06] focus-visible:outline-none"
                 >

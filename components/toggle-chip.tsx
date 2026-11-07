@@ -31,6 +31,6 @@ export function ToggleChip({
   );
 }
 
-export function toggleInList(list: string[], value: string) {
+export function toggleInList<T extends string>(list: T[], value: T): T[] {
   return list.includes(value) ? list.filter((item) => item !== value) : [...list, value];
 }

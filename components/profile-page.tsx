@@ -113,7 +113,7 @@ export function ProfilePage() {
     setError("");
     setMessage("");
     try {
-      const currentTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || availability.timezone;
+      const currentTimezone = availability.timezone.trim() || Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
       const updated = await loadJson<ProfileData>("/api/profile", {
         method: "PUT",
         body: JSON.stringify({
@@ -226,6 +226,7 @@ export function ProfilePage() {
             </div>
             <div className="mt-4"><SkillPicker title="Available for" selected={availability.availableFor} otherSelected={[]} onChange={(availableFor) => setAvailability({ ...availability, availableFor })} /></div>
             <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              <label className="text-xs text-slate-400">Timezone<input required maxLength={80} value={availability.timezone} onChange={(event) => setAvailability({ ...availability, timezone: event.target.value })} placeholder="e.g. Asia/Kolkata" className="mt-1 w-full rounded border border-white/10 bg-black/30 px-2 py-2 text-white" /></label>
               <label className="text-xs text-slate-400">Quiet hours start<input type="time" value={availability.quietHoursStart} onChange={(event) => setAvailability({ ...availability, quietHoursStart: event.target.value })} className="mt-1 w-full rounded border border-white/10 bg-black/30 px-2 py-2 text-white" /></label>
               <label className="text-xs text-slate-400">Quiet hours end<input type="time" value={availability.quietHoursEnd} onChange={(event) => setAvailability({ ...availability, quietHoursEnd: event.target.value })} className="mt-1 w-full rounded border border-white/10 bg-black/30 px-2 py-2 text-white" /></label>
               <label className="text-xs text-slate-400">Daily request cap<input type="number" min={1} max={20} value={availability.dailyHelpNowLimit} onChange={(event) => setAvailability({ ...availability, dailyHelpNowLimit: Number(event.target.value) })} className="mt-1 w-full rounded border border-white/10 bg-black/30 px-2 py-2 text-white" /></label>

@@ -27,7 +27,8 @@ export async function GET() {
     }).sort({ startsAt: 1 }).limit(50).lean();
     const sessionsByExchange = new Map<string, typeof sessions>();
     for (const appointment of sessions) {
-      const key = appointment.exchangeId.toString();
+      const key = appointment.exchangeId?.toString();
+      if (!key) continue;
       sessionsByExchange.set(key, [...(sessionsByExchange.get(key) ?? []), appointment]);
     }
 

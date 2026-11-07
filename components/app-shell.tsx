@@ -35,7 +35,6 @@ const LINKS = [
   { href: "/asks", label: "Asks", icon: CircleHelp },
   { href: "/find-partners", label: "Find Partners", icon: Users },
   { href: "/messages", label: "Messages", icon: MessageSquare },
-  { href: "/profile", label: "Profile", icon: Users },
   { href: "/info", label: "Info", icon: Info },
 ];
 
@@ -135,7 +134,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <GlobalUserSearch />
           </div>
           <AvailabilityToggle />
-          <HelpNowButton size="sm" className="h-8 shrink-0 px-2.5 text-xs" />
+          <HelpNowButton className="h-8 shrink-0 px-2.5 text-xs" />
           <CommandPalette />
           <NotificationBell />
           <InvitationsInbox />

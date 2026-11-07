@@ -23,6 +23,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   let notes = "";
   let problem = "";
   let brief = "";
+  let generateRecap = false;
   let participants: mongoose.Types.ObjectId[] = [];
   try {
     await transaction.withTransaction(async () => {
@@ -37,6 +38,12 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
       if (appointment.status === "completed") {
         completed = true;
         sessionId = appointment._id.toString();
+        const room = await SessionRoom.findById(appointment.roomId).session(transaction);
+        notes = room?.notes ?? "";
+        problem = helpRequest.problem;
+        brief = helpRequest.helperBrief;
+        generateRecap = !helpRequest.recap;
+        participants = appointment.participants;
         return;
       }
       if (appointment.status !== "scheduled") { failure = "inactive"; return; }
@@ -65,6 +72,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
         if (!released.applied) throw new Error("Unable to release held Help Now credits.");
         helpRequest.status = "completed";
         await helpRequest.save({ session: transaction });
+        generateRecap = true;
         await Notification.create(updated.participants.map((recipient) => ({
           recipient,
           sender: current._id,
@@ -92,16 +100,19 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   if (failure === "missing") return NextResponse.json({ error: "Help Now Session not found." }, { status: 404 });
   if (failure === "inactive") return NextResponse.json({ error: "This Session can no longer be completed." }, { status: 409 });
   if (completed) {
-    const recap = await createPracticeRecap(problem, notes, brief);
-    await HelpRequest.updateOne(
-      { _id: id, status: "completed" },
-      { $set: { recap: recap.recap, practiceSteps: recap.practiceSteps } },
-    );
+    if (generateRecap) {
+      const generated = await createPracticeRecap(problem, notes, brief);
+      await HelpRequest.updateOne(
+        { _id: id, status: "completed", recap: "" },
+        { $set: { recap: generated.recap, practiceSteps: generated.practiceSteps } },
+      );
+    }
+    const savedRecap = await HelpRequest.findById(id).select("recap practiceSteps").lean();
     return NextResponse.json({
       completed: true,
       sessionId,
-      recap: recap.recap,
-      practiceSteps: recap.practiceSteps,
+      recap: savedRecap?.recap ?? "",
+      practiceSteps: savedRecap?.practiceSteps ?? [],
       confirmedBy: participants.length,
     });
   }

@@ -7,7 +7,6 @@ import { requireCurrentUser } from "@/lib/session-user";
 import HelpOffer from "@/models/HelpOffer";
 import HelpRequest from "@/models/HelpRequest";
 import Session from "@/models/Session";
-import Session from "@/models/Session";
 import User from "@/models/User";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {

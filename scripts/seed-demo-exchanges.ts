@@ -27,16 +27,27 @@ async function seed() {
   await mongoose.connect(process.env.MONGODB_URI);
   const password = await bcrypt.hash(DEMO_PASSWORD, 12);
   const demoProfiles = [
-    { username: "demo_a", displayName: "Mira Chen", skillsHave: ["Product design", "Figma", "User research"], skillsLearn: ["React", "TypeScript"], domainInterests: ["Education", "Community"] },
-    { username: "demo_b", displayName: "Aarav Patel", skillsHave: ["React", "TypeScript", "Frontend development"], skillsLearn: ["Product design", "Figma"], domainInterests: ["Education", "Accessibility"] },
-    { username: "demo_c", displayName: "Sam Rivera", skillsHave: ["Python", "Data analysis"], skillsLearn: ["Public speaking", "Storytelling"], domainInterests: ["Climate", "Civic tech"] },
-    { username: "demo_d", displayName: "Nia Okafor", skillsHave: ["Illustration", "Brand design"], skillsLearn: ["Web development", "CSS"], domainInterests: ["Arts", "Wellbeing"] },
-    { username: "demo_e", displayName: "Leo Tanaka", skillsHave: ["Japanese", "Photography"], skillsLearn: ["Motion design", "Video editing"], domainInterests: ["Language", "Culture"] },
+    { username: "demo_a", displayName: "Mira Chen", skillsHave: ["Cooking", "Baking", "Python"], skillsLearn: ["React", "TypeScript"], domainInterests: [] },
+    { username: "demo_b", displayName: "Aarav Patel", skillsHave: ["Fitness coaching", "Yoga", "React"], skillsLearn: ["Product design", "Figma"], domainInterests: [] },
+    { username: "demo_c", displayName: "Sam Rivera", skillsHave: ["Japanese", "Academic writing"], skillsLearn: ["Public speaking", "Storytelling"], domainInterests: [] },
+    { username: "demo_d", displayName: "Nia Okafor", skillsHave: ["Career planning", "Personal finance", "Illustration"], skillsLearn: ["Web development", "CSS"], domainInterests: [] },
+    { username: "demo_e", displayName: "Leo Tanaka", skillsHave: ["Guitar", "Music theory", "Creative writing"], skillsLearn: ["Japanese", "Photography"], domainInterests: [] },
   ];
 
   const demoUsers = await Promise.all(demoProfiles.map((profile) => User.findOneAndUpdate(
     { username: profile.username },
-    { $set: { ...profile, password, isProfileComplete: true } },
+    {
+      $set: {
+        ...profile,
+        password,
+        isProfileComplete: true,
+        availableUntil: new Date(Date.now() + 120 * 60_000),
+        availableFor: profile.skillsHave,
+        lastSeen: new Date(),
+        quietHoursStart: "",
+        quietHoursEnd: "",
+      },
+    },
     { upsert: true, returnDocument: "after", setDefaultsOnInsert: true },
   )));
   if (demoUsers.some((user) => !user)) throw new Error("Could not create the demo members.");
@@ -97,13 +108,13 @@ async function seed() {
     participants: [mira._id, aarav._id],
     teacherId: mira._id,
     learnerId: aarav._id,
-    topic: "Designing accessible component states in Figma",
+    topic: "Planning a simple sourdough baking routine",
     startsAt: completedStartsAt,
-    durationMinutes: 45,
+    durationMinutes: 15,
     status: "completed",
     roomId: completedRoomId,
     idempotencyKey: "demo-completed-session",
-    completedAt: new Date(completedStartsAt.getTime() + 45 * 60_000),
+    completedAt: new Date(completedStartsAt.getTime() + 15 * 60_000),
     createdBy: aarav._id,
   });
   const review = await SessionReview.create({
@@ -111,12 +122,11 @@ async function seed() {
     reviewerId: aarav._id,
     recipientId: mira._id,
     rating: 5,
-    feedback: "Clear, generous teaching. I can apply the accessibility checks to my own components now.",
-    skills: ["Figma", "Accessibility"],
+    feedback: "Clear, generous teaching. I can apply the baking steps at home now.",
+    skills: ["Baking"],
   });
   await SkillBadge.create([
-    { userId: mira._id, sessionId: completedSessionId, reviewId: review._id, skill: "Figma" },
-    { userId: mira._id, sessionId: completedSessionId, reviewId: review._id, skill: "Accessibility" },
+    { userId: mira._id, sessionId: completedSessionId, reviewId: review._id, skill: "Baking" },
   ]);
 
   const upcomingRoomId = new mongoose.Types.ObjectId();
@@ -134,9 +144,9 @@ async function seed() {
     participants: [mira._id, aarav._id],
     teacherId: aarav._id,
     learnerId: mira._id,
-    topic: "React components and TypeScript props",
+    topic: "Starting a simple fitness routine",
     startsAt: new Date(now + 2 * 86_400_000),
-    durationMinutes: 30,
+    durationMinutes: 15,
     status: "scheduled",
     roomId: upcomingRoomId,
     idempotencyKey: "demo-upcoming-session",
@@ -150,21 +160,15 @@ async function seed() {
     { authorId: leo._id, skillOffered: "Japanese", skillWanted: "Motion design", note: "I can help with conversational Japanese. I am looking for a patient introduction to motion design.", status: "open" },
   ]);
 
-  const balances = new Map([
-    [mira._id.toString(), 75],
-    [aarav._id.toString(), 15],
-    [sam._id.toString(), 60],
-    [nia._id.toString(), 60],
-    [leo._id.toString(), 60],
-  ]);
-  await Promise.all(users.map((user) => CreditAccount.create({ userId: user._id, balance: balances.get(user._id.toString()) ?? 60 })));
+  await Promise.all(users.map((user) => CreditAccount.create({ userId: user._id, balance: 2 })));
   const ledgerEntries = [
-    { userId: mira._id, amount: 60, type: "starter", idempotencyKey: "demo-starter-a" },
-    { userId: mira._id, counterpartyId: aarav._id, sessionId: completedSessionId, amount: 45, type: "session_earned", idempotencyKey: `${completedSessionId}:earned` },
-    { userId: mira._id, counterpartyId: aarav._id, sessionId: upcomingSessionId, amount: -30, type: "session_spent", idempotencyKey: `${upcomingSessionId}:spent` },
-    { userId: aarav._id, amount: 60, type: "starter", idempotencyKey: "demo-starter-b" },
-    { userId: aarav._id, counterpartyId: mira._id, sessionId: completedSessionId, amount: -45, type: "session_spent", idempotencyKey: `${completedSessionId}:spent` },
-    ...users.slice(2).map((user, index) => ({ userId: user._id, amount: 60, type: "starter", idempotencyKey: `demo-starter-${index + 3}` })),
+    { userId: mira._id, amount: 2, type: "starter", idempotencyKey: "demo-starter-a" },
+    { userId: mira._id, counterpartyId: aarav._id, sessionId: completedSessionId, amount: 15, type: "session_earned", idempotencyKey: `${completedSessionId}:earned` },
+    { userId: mira._id, counterpartyId: aarav._id, sessionId: upcomingSessionId, amount: -15, type: "session_spent", idempotencyKey: `${upcomingSessionId}:spent` },
+    { userId: aarav._id, amount: 2, type: "starter", idempotencyKey: "demo-starter-b" },
+    { userId: aarav._id, counterpartyId: mira._id, sessionId: completedSessionId, amount: -15, type: "session_spent", idempotencyKey: `${completedSessionId}:spent` },
+    { userId: aarav._id, counterpartyId: mira._id, sessionId: upcomingSessionId, amount: 15, type: "session_earned", idempotencyKey: `${upcomingSessionId}:earned` },
+    ...users.slice(2).map((user, index) => ({ userId: user._id, amount: 2, type: "starter", idempotencyKey: `demo-starter-${index + 3}` })),
   ];
   await CreditLedger.insertMany(ledgerEntries);
 
@@ -174,7 +178,7 @@ async function seed() {
   ]);
 
   await mongoose.disconnect();
-  console.log(`Seeded demo Exchange, upcoming and completed Sessions, reviews, Asks, and credits. Password: ${DEMO_PASSWORD}`);
+  console.log(`Seeded demo learning partners, available helpers, Sessions, reviews, Asks, and credits. Password: ${DEMO_PASSWORD}`);
 }
 
 seed().catch(async (error: unknown) => {

@@ -132,7 +132,7 @@ export function LandingPage() {
               </span>
               <span className="inline-flex items-center gap-2">
                 <Check className="size-3.5 text-emerald-300" />
-                Grow your Skill Passport
+                Grow a record of what you learn
               </span>
             </div>
           </motion.div>
@@ -226,7 +226,7 @@ export function LandingPage() {
                 icon={Layers3}
                 label="03 / Keep growing"
                 title="Sessions that add up"
-                description="Meet on a weekly rhythm, share notes, and grow your Skill Passport with peer reviews."
+                description="Meet regularly, share notes, and celebrate progress with peer reviews."
               />
             </div>
           </div>
@@ -242,7 +242,7 @@ export function LandingPage() {
                   Teach what you know. Learn what you want.
                 </h2>
                 <p className="mt-3 text-sm leading-6 text-slate-400">
-                  Create your Skill Passport, meet a learning partner, and start exchanging time and skills.
+                  Create your profile, meet a learning partner, and start sharing skills and time.
                 </p>
               </div>
               <Button asChild size="lg" className="h-11 shrink-0 px-5">

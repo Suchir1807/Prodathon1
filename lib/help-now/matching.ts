@@ -38,7 +38,6 @@ export async function rankHelpCandidates(requesterId: mongoose.Types.ObjectId, t
   const users = await User.find({
     _id: { $ne: requesterId },
     availableUntil: { $gt: now },
-    lastSeen: { $gte: new Date(now.getTime() - 5 * 60_000) },
   })
     .select("_id skillsHave availableFor timezone quietHoursStart quietHoursEnd dailyHelpNowLimit")
     .lean();
@@ -102,6 +101,7 @@ export async function rankHelpCandidates(requesterId: mongoose.Types.ObjectId, t
         ratingCount: ratings.length,
       };
     })
+    .filter((candidate) => candidate.ratingCount === 0 || candidate.rating >= 3.5)
     .sort((left, right) =>
       right.rating - left.rating ||
       right.ratingCount - left.ratingCount ||

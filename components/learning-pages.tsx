@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { ArrowRight, BookOpen, CalendarClock, Handshake, Plus, RefreshCw, Star } from "lucide-react";
+import { ArrowRight, BookOpen, Plus, Star } from "lucide-react";
 
 import { UserAvatar } from "@/components/user-avatar";
 import { Button } from "@/components/ui/button";
@@ -127,12 +127,12 @@ export function AsksPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 md:px-6">
-      <PageHeading eyebrow="Ask your community" title="Skill Asks" description="Share a specific skill you can offer and the one you want to learn. When someone responds, arrange a Session together." />
+      <PageHeading eyebrow="Ask your community" title="Asks" description="Share a specific skill you can offer and the one you want to learn. When someone responds, arrange a Session together." />
       {error ? <p role="alert" className="mb-4 rounded-lg border border-rose-400/20 bg-rose-400/5 p-3 text-sm text-rose-200">{error}</p> : null}
       <form onSubmit={(event) => void publish(event)} className="mb-7 grid gap-3 rounded-2xl border border-emerald-300/15 bg-emerald-300/[0.035] p-4 sm:grid-cols-2 sm:p-5">
         <label className="text-xs text-slate-400">I can teach<input required maxLength={80} value={skillOffered} onChange={(event) => setSkillOffered(event.target.value)} placeholder="e.g. Figma prototyping" className="mt-1.5 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/60" /></label>
         <label className="text-xs text-slate-400">I want to learn<input required maxLength={80} value={skillWanted} onChange={(event) => setSkillWanted(event.target.value)} placeholder="e.g. user research" className="mt-1.5 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/60" /></label>
-        <label className="text-xs text-slate-400 sm:col-span-2">A little context<textarea required minLength={10} maxLength={1000} rows={3} value={note} onChange={(event) => setNote(event.target.value)} placeholder="What would make this exchange useful for you?" className="mt-1.5 w-full resize-y rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/60" /></label>
+        <label className="text-xs text-slate-400 sm:col-span-2">A little context<textarea required minLength={10} maxLength={1000} rows={3} value={note} onChange={(event) => setNote(event.target.value)} placeholder="What would make learning together useful?" className="mt-1.5 w-full resize-y rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/60" /></label>
         <div className="sm:col-span-2"><Button type="submit" size="sm" loading={busy}><Plus />Publish an Ask</Button></div>
       </form>
       <h2 className="mb-3 font-heading text-lg font-semibold text-white">Open Asks</h2>
@@ -157,6 +157,7 @@ export function SessionsPage() {
   const [received, setReceived] = useState<PartnerRequest[]>([]);
   const [sent, setSent] = useState<PartnerRequest[]>([]);
   const [balance, setBalance] = useState(0);
+  const [now, setNow] = useState(0);
   const [tab, setTab] = useState<"Upcoming" | "Requests" | "Past">("Upcoming");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -177,6 +178,7 @@ export function SessionsPage() {
         requestJson<{ received: PartnerRequest[]; sent: PartnerRequest[] }>("/api/exchange-invites"),
       ]);
       setSessions(sessionData.sessions); setBalance(creditData.balance); setExchanges(exchangeData.exchanges);
+      setNow(Date.now());
       setReceived(requestData.received); setSent(requestData.sent);
       setError("");
     } catch (reason) { setError(reason instanceof Error ? reason.message : "Unable to load Sessions."); }
@@ -231,10 +233,10 @@ export function SessionsPage() {
   }
 
   const futureSessions = sessions.filter((item) =>
-    item.status === "scheduled" && new Date(item.startsAt).getTime() >= Date.now(),
+    item.status === "scheduled" && new Date(item.startsAt).getTime() >= now,
   );
   const pastSessions = sessions.filter((item) =>
-    item.status !== "scheduled" || new Date(item.startsAt).getTime() < Date.now(),
+    item.status !== "scheduled" || new Date(item.startsAt).getTime() < now,
   );
   const shownSessions = tab === "Past"
     ? pastSessions
@@ -271,7 +273,10 @@ export function SessionsPage() {
       ) : (
         <div className="grid gap-3">
           {shownSessions.map((appointment) => {
-            const shared = sessions.filter((item) => item.partner?.id === appointment.partner?.id)
+            const shared = sessions.filter((item) =>
+              item.partner?.id === appointment.partner?.id &&
+              ["scheduled", "completed"].includes(item.status),
+            )
               .sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime());
             const sequence = shared.findIndex((item) => item.id === appointment.id) + 1;
             return <article key={appointment.id} className="rounded-xl border border-white/10 bg-white/[0.025] p-4">

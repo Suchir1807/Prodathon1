@@ -24,7 +24,6 @@ type PartnerUser = {
   displayName: string;
   skillsHave: string[];
   skillsLearn: string[];
-  domainInterests: string[];
   isFollowing: boolean;
 };
 
@@ -79,11 +78,11 @@ export default function FindPartnersPage() {
     return partners
       .map((partner) => ({
         partner,
-        insight: matchInsight(profile, {
+        insight: matchInsight({ ...profile, domains: [] }, {
           name: partner.displayName,
           canTeach: partner.skillsHave,
           wantsToLearn: partner.skillsLearn,
-          domains: partner.domainInterests,
+          domains: [],
         }),
       }))
       .filter(({ partner }) => {
@@ -93,7 +92,6 @@ export default function FindPartnersPage() {
           partner.username,
           ...partner.skillsHave,
           ...partner.skillsLearn,
-          ...partner.domainInterests,
         ];
         return searchable.some((value) => value.toLowerCase().includes(needle));
       })
@@ -367,7 +365,6 @@ export default function FindPartnersPage() {
                     <div className="relative mt-5 flex-1 space-y-4">
                       <SkillPills label="Can teach" skills={partner.skillsHave} matched={insight.theyTeachYou} />
                       <SkillPills label="Wants to learn" skills={partner.skillsLearn} matched={insight.youTeachThem} />
-                      <SkillPills label="Into" skills={partner.domainInterests} matched={insight.sharedDomains} />
                     </div>
 
                     <div className="relative mt-5 flex flex-wrap items-center gap-2 border-t border-white/8 pt-4">
@@ -378,7 +375,7 @@ export default function FindPartnersPage() {
                         onClick={() => void sendExchangeInvite(partner._id)}
                         className="flex-1"
                       >
-                        {sent ? <><Check /> Invitation sent</> : pending ? "Sending…" : <>Invite to Exchange <ArrowRight /></>}
+                        {sent ? <><Check /> Invitation sent</> : pending ? "Sending…" : <>Invite to learn together <ArrowRight /></>}
                       </Button>
                       <Button
                         size="sm"
@@ -393,10 +390,10 @@ export default function FindPartnersPage() {
                       </Button>
                     </div>
                     <Link
-                      href={`/profile/${partner._id}`}
+                      href={`/u/${encodeURIComponent(partner.username)}`}
                       className="relative mt-3 inline-flex w-fit items-center gap-1 text-[11px] font-medium text-slate-400 transition-colors hover:text-emerald-200"
                     >
-                      View Skill Passport <ArrowRight className="size-3" />
+                      View profile <ArrowRight className="size-3" />
                     </Link>
                   </article>
                 );
@@ -415,7 +412,6 @@ export default function FindPartnersPage() {
           </p>
           <SkillPills label="You can teach" skills={profile.canTeach} />
           <SkillPills label="You want to learn" skills={profile.wantsToLearn} />
-          <SkillPills label="Your domains" skills={profile.domains} />
           <div className="mt-5 border-t border-white/8 pt-4">
             <Link href="/profile" className="inline-flex items-center gap-2 text-xs font-semibold text-signal hover:underline">
               Complete your profile <ArrowRight className="size-3.5" />

@@ -17,6 +17,12 @@ import { profileReady } from "@/lib/profile";
 import type { Partner } from "@/lib/types";
 import { publicUserToPartner, type PublicUser } from "@/lib/user-partner";
 import { cn } from "@/lib/utils";
+import { normalizeSkill, SKILL_CATEGORIES, type SkillCategory } from "@/lib/skill-categories";
+
+const CATEGORY_BY_SKILL = new Map<string, SkillCategory>();
+for (const [category, skills] of Object.entries(SKILL_CATEGORIES) as [SkillCategory, readonly string[]][]) {
+  for (const skill of skills) CATEGORY_BY_SKILL.set(normalizeSkill(skill), category);
+}
 
 function passesFilters(
   partner: Partner,
@@ -33,10 +39,10 @@ function passesFilters(
   ) {
     return false;
   }
-  if (
-    filters.domains.length > 0 &&
-    !filters.domains.some((domain) => partner.domains.includes(domain))
-  ) {
+  const partnerSkills = [...partner.canTeach, ...partner.wantsToLearn];
+  if (filters.categories.length > 0 && !partnerSkills.some((skill) =>
+    filters.categories.includes(CATEGORY_BY_SKILL.get(normalizeSkill(skill)) ?? "Other"),
+  )) {
     return false;
   }
   if (
@@ -95,7 +101,7 @@ export function PartnerBoard() {
   const results = useMemo(() => {
     return directory.map((partner) => ({
       partner,
-      insight: matchInsight(profile, partner),
+      insight: matchInsight({ ...profile, domains: [] }, { ...partner, domains: [] }),
     }))
       .filter(({ partner, insight }) => passesFilters(partner, insight, filters, complementary))
       .sort((left, right) => right.insight.score - left.insight.score);

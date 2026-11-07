@@ -108,7 +108,6 @@ export function HelpNowController() {
       if (document.visibilityState !== "visible") return;
       void pollOffer();
     }, 4000);
-    if (document.visibilityState === "visible") void pollOffer();
     return () => window.clearInterval(timer);
   }, [pollOffer]);
 
@@ -131,7 +130,6 @@ export function HelpNowController() {
 
   useEffect(() => {
     if (!open || problem.trim().length < 3) {
-      setOnlineCount(null);
       return;
     }
     let active = true;
@@ -150,12 +148,8 @@ export function HelpNowController() {
   }, [open, problem]);
 
   useEffect(() => {
-    if (!incomingOffer) {
-      setCountdown(0);
-      return;
-    }
+    if (!incomingOffer) return;
     const update = () => setCountdown(Math.max(0, Math.ceil((new Date(incomingOffer.expiresAt).getTime() - Date.now()) / 1000)));
-    update();
     const timer = window.setInterval(update, 1000);
     return () => window.clearInterval(timer);
   }, [incomingOffer]);
@@ -251,6 +245,7 @@ export function HelpNowController() {
               <label className="block text-xs text-slate-300">Describe the problem
                 <textarea autoFocus value={problem} onChange={(event) => setProblem(event.target.value)} minLength={5} maxLength={1000} rows={4} required placeholder="My sourdough isn't rising…" className="mt-1.5 w-full resize-y rounded-xl border border-white/10 bg-black/30 px-3 py-3 text-sm text-white placeholder:text-slate-600" />
               </label>
+              <p className="text-[11px] text-slate-500">A 15- or 30-minute session uses that many credits. Teach a skill to earn more, or post an Ask to find a learning partner.</p>
               <div className="grid gap-3 sm:grid-cols-2">
                 <label className="text-xs text-slate-400">Urgency<select value={urgency} onChange={(event) => setUrgency(event.target.value as "now" | "within_hour")} className="mt-1.5 w-full rounded-lg border border-white/10 bg-[#07110c] px-3 py-2 text-sm text-white"><option value="now">Now</option><option value="within_hour">Within an hour</option></select></label>
                 <label className="text-xs text-slate-400">Session length<select value={durationMinutes} onChange={(event) => setDurationMinutes(Number(event.target.value) as 15 | 30)} className="mt-1.5 w-full rounded-lg border border-white/10 bg-[#07110c] px-3 py-2 text-sm text-white"><option value={15}>15 minutes</option><option value={30}>30 minutes</option></select></label>
@@ -309,18 +304,25 @@ export function HelpNowController() {
 
 export function AvailabilityToggle() {
   const [available, setAvailable] = useState(false);
+  const [availableFor, setAvailableFor] = useState<string[]>([]);
   const [durationMinutes, setDurationMinutes] = useState<30 | 60 | 120>(60);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let active = true;
     fetch("/api/availability", { cache: "no-store" }).then(async (response) => {
-      if (!response.ok) return;
-      const data = await response.json() as { available?: boolean };
-      if (active) setAvailable(Boolean(data.available));
+      const data = await response.json() as { available?: boolean; availableFor?: string[]; error?: string };
+      if (!response.ok) throw new Error(data.error ?? "Availability could not be loaded.");
+      if (active) {
+        setAvailable(Boolean(data.available));
+        setAvailableFor(data.availableFor ?? []);
+      }
     }).catch(() => {
       if (active) setError("Availability could not be loaded.");
+    }).finally(() => {
+      if (active) setLoading(false);
     });
     return () => { active = false; };
   }, []);
@@ -332,7 +334,7 @@ export function AvailabilityToggle() {
       const response = await fetch("/api/availability", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ available: !available, durationMinutes, availableFor: [] }),
+        body: JSON.stringify({ available: !available, durationMinutes, availableFor }),
       });
       const data = await response.json() as { available?: boolean; error?: string };
       if (!response.ok) throw new Error(data.error ?? "Unable to update availability.");
@@ -347,7 +349,7 @@ export function AvailabilityToggle() {
   return (
     <div className="relative flex items-center gap-1">
       <select aria-label="Availability duration" value={durationMinutes} onChange={(event) => setDurationMinutes(Number(event.target.value) as 30 | 60 | 120)} className="hidden h-8 rounded-md border border-white/10 bg-black/30 px-1.5 text-[10px] text-slate-400 md:block"><option value={30}>30m</option><option value={60}>60m</option><option value={120}>120m</option></select>
-      <button type="button" aria-pressed={available} disabled={busy} onClick={() => void toggle()} className={`h-8 rounded-md border px-2 text-[10px] font-medium transition ${available ? "border-emerald-300/30 bg-emerald-300/10 text-emerald-100" : "border-white/10 text-slate-400 hover:text-white"}`}>{available ? "Available" : "Available now"}</button>
+      <button type="button" aria-pressed={available} disabled={busy || loading} onClick={() => void toggle()} className={`h-8 rounded-md border px-2 text-[10px] font-medium transition ${available ? "border-emerald-300/30 bg-emerald-300/10 text-emerald-100" : "border-white/10 text-slate-400 hover:text-white"}`}>{available ? "Available" : "Available now"}</button>
       {error ? <span role="alert" className="sr-only">{error}</span> : null}
     </div>
   );

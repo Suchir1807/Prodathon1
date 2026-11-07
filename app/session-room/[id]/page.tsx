@@ -1,4 +1,4 @@
-import { SessionRoomView } from "@/components/exchange-pages";
+import { SessionRoomView } from "@/components/learning-pages";
 
 export default async function SessionRoomRoute({
   params,

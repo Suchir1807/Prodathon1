@@ -86,7 +86,7 @@ export function PartnerCard({
           </Button>
         ) : null}
         <Button size="sm" onClick={onRequest} loading={requestPending} disabled={proposeDisabled || requestSent}>
-          {requestSent ? "Invitation sent" : requestPending ? "Sending…" : "Invite to Exchange"}
+          {requestSent ? "Invitation sent" : requestPending ? "Sending…" : "Invite to learn together"}
         </Button>
       </div>
     </article>

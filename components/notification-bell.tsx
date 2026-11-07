@@ -199,7 +199,7 @@ export function NotificationBell() {
                       ? "/sessions"
                       : notification.askId
                         ? "/asks"
-                        : `/profile/${encodeURIComponent(sender.id)}`;
+                        : `/u/${encodeURIComponent(sender.username)}`;
                   return (
                     <li
                       key={notification.id}
@@ -217,7 +217,7 @@ export function NotificationBell() {
                           onClick={() => setOpen(false)}
                           className="shrink-0 text-[10px] text-[#ccff00] hover:underline"
                         >
-                          {notification.sessionRoomId ? "Open Session" : notification.exchangeId ? "Open Exchange" : "View"}
+                          {notification.sessionRoomId ? "Open Session" : notification.exchangeId ? "Open Sessions" : "View"}
                         </Link>
                       ) : (
                         <button

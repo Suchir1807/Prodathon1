@@ -34,9 +34,10 @@ export async function GET(request: Request) {
         { username: search },
         { displayName: search },
         { skillsHave: search },
+        { skillsLearn: search },
       ],
     })
-      .select("username displayName skillsHave")
+      .select("username displayName skillsHave skillsLearn")
       .sort({ username: 1 })
       .limit(10)
     .lean<{
@@ -44,6 +45,7 @@ export async function GET(request: Request) {
       username: string;
       displayName?: string;
       skillsHave?: string[];
+      skillsLearn?: string[];
     }[]>();
 
     return NextResponse.json({
@@ -52,6 +54,7 @@ export async function GET(request: Request) {
         username: user.username,
         displayName: user.displayName ?? "",
         skillsHave: user.skillsHave ?? [],
+        skillsLearn: user.skillsLearn ?? [],
       })),
     });
   } catch (error) {

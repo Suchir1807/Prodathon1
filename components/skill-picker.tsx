@@ -57,8 +57,7 @@ export function SkillPicker({
     onChange([...selected, skill]);
   }
 
-  function addCustomSkill(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  function addCustomSkill() {
     const skill = customSkill.trim();
     if (!skill) return;
     toggle(skill);
@@ -117,17 +116,23 @@ export function SkillPicker({
         ))}
         {!visibleCategories.length ? <p className="text-xs text-slate-500">No matching skills in this category.</p> : null}
       </div>
-      <form className="mt-3 flex gap-2" onSubmit={addCustomSkill}>
+      <div className="mt-3 flex gap-2">
         <input
           value={customSkill}
           onChange={(event) => setCustomSkill(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              addCustomSkill();
+            }
+          }}
           maxLength={80}
           placeholder="Add a custom skill"
           aria-label={`Add custom skill to ${title}`}
           className="min-w-0 flex-1 rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white"
         />
-        <Button type="submit" size="sm" variant="outline">Add</Button>
-      </form>
+        <Button type="button" size="sm" variant="outline" onClick={addCustomSkill}>Add</Button>
+      </div>
       {message ? <p role="alert" className="mt-2 text-xs text-amber-200">{message}</p> : null}
       {selected.length ? (
         <div className="mt-4 flex flex-wrap gap-2">

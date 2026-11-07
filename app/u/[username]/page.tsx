@@ -33,14 +33,14 @@ export default async function PublicProfilePage({
   await connectDB();
   const [user, viewerSession] = await Promise.all([
     User.findOne({ username })
-      .select("username displayName bio skillsHave skillsLearn followers")
+      .select("username displayName bio")
       .lean(),
     getServerSession(authOptions),
   ]);
   if (!user) notFound();
 
   const viewerName = viewerSession?.user?.name?.trim().toLocaleLowerCase();
-  const viewer = viewerName ? await User.findOne({ username: viewerName }).select("_id").lean() : null;
+  const viewer = viewerName ? await User.findOne({ username: viewerName }).select("_id username displayName").lean() : null;
   const isSelf = viewer?._id.equals(user._id) ?? false;
   const name = user.displayName?.trim() || formatUsername(user.username);
   const [sessions, badges, reviews, account, ledger] = await Promise.all([
@@ -75,7 +75,10 @@ export default async function PublicProfilePage({
     ? reviews.reduce((total, review) => total + review.rating, 0) / reviews.length
     : 0;
   const sessionsWithViewer = viewer && !isSelf
-    ? await Session.find({ participants: { $all: [user._id, viewer._id] } }).countDocuments()
+    ? await Session.find({
+        participants: { $all: [user._id, viewer._id] },
+        status: { $in: ["scheduled", "completed"] },
+      }).countDocuments()
     : 0;
 
   return (
@@ -87,7 +90,7 @@ export default async function PublicProfilePage({
             <h1 className="truncate text-2xl font-semibold text-white">{name}</h1>
             <p className="mt-1 text-sm text-slate-400">@{user.username}</p>
             {user.bio ? <p className="mt-4 max-w-2xl whitespace-pre-wrap text-sm leading-6 text-slate-300">{user.bio}</p> : null}
-            {sessionsWithViewer > 0 ? <p className="mt-3 text-xs text-emerald-200">{sessionsWithViewer}{ordinalSuffix(sessionsWithViewer)} session together</p> : null}
+            {sessionsWithViewer > 0 ? <p className="mt-3 text-xs text-emerald-200">{ordinalSuffix(sessionsWithViewer)} session with {viewer?.displayName?.trim() || (viewer ? formatUsername(viewer.username) : "you")}</p> : null}
           </div>
         </div>
 
@@ -152,11 +155,6 @@ export default async function PublicProfilePage({
         </div>
       </section>
 
-      <section className="mt-6 grid gap-6 rounded-2xl border border-white/10 bg-white/[0.025] p-5 sm:grid-cols-2">
-        <SkillList title="Skills I can offer" skills={user.skillsHave ?? []} />
-        <SkillList title="Skills I want to learn" skills={user.skillsLearn ?? []} />
-      </section>
-
       <div className="mt-4 flex items-center gap-2 text-xs text-slate-500"><Flame className="size-3.5" />Public overview · earned skills and learning activity</div>
     </div>
   );
@@ -164,10 +162,6 @@ export default async function PublicProfilePage({
 
 function StatsCard({ label, value }: { label: string; value: string }) {
   return <div className="rounded-xl border border-white/8 bg-black/20 p-3"><p className="text-[10px] uppercase tracking-wider text-slate-500">{label}</p><p className="mt-1 text-lg font-semibold text-white">{value}</p></div>;
-}
-
-function SkillList({ title, skills }: { title: string; skills: string[] }) {
-  return <div><h2 className="text-xs uppercase tracking-wide text-slate-400">{title}</h2><div className="mt-3 flex flex-wrap gap-2">{skills.length ? skills.map((skill) => <span key={skill} className="rounded-full border border-white/10 px-3 py-1 text-xs text-slate-200">{skill}</span>) : <span className="text-xs text-slate-600">Not added</span>}</div></div>;
 }
 
 function calculateStreak(dates: Date[]) {

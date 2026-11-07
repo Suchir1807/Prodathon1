@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { quickAnswer, triageHelpRequest } from "@/lib/ai/help-now";
+import { ensureCreditAccount, getCreditBalance } from "@/lib/credit-balance";
 import connectDB from "@/lib/mongodb";
 import { rankHelpCandidates, offerNextHelpCandidate } from "@/lib/help-now/matching";
 import { requireCurrentUser } from "@/lib/session-user";
@@ -23,13 +24,22 @@ export async function POST(request: Request) {
   try {
     await connectDB();
     const now = new Date();
-    const [requestCount, requester] = await Promise.all([
+    const [requestCount, requester, balance] = await Promise.all([
       HelpRequest.countDocuments({
         requesterId: current._id,
         createdAt: { $gte: new Date(now.getTime() - 15 * 60_000) },
       }),
       User.findById(current._id).select("helpNowCancelCount skillsHave").lean(),
+      (async () => {
+        await ensureCreditAccount(current._id);
+        return getCreditBalance(current._id);
+      })(),
     ]);
+    if (balance < parsed.data.durationMinutes) {
+      return NextResponse.json({
+        error: `You have ${balance} credits but need ${parsed.data.durationMinutes} for this session. Offer a skill session to earn credits, or post an Ask to find a learning partner.`,
+      }, { status: 402 });
+    }
     if (requestCount >= 3) return NextResponse.json({ error: "Please wait before starting another Help Now request." }, { status: 429 });
     if ((requester?.helpNowCancelCount ?? 0) >= 3) {
       return NextResponse.json({ error: "Help Now is paused for your account after repeated cancellations. Contact support to restore access." }, { status: 403 });

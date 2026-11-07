@@ -17,6 +17,7 @@ type UpcomingSession = {
   topic: string;
   startsAt: string;
   durationMinutes: number;
+  status: "scheduled" | "completed" | "cancelled" | "no_show";
   partner: { displayName: string } | null;
 };
 
@@ -52,7 +53,9 @@ export function DashboardView() {
       }),
     ]).then(([nextSessions, nextBalance, nextPractice]) => {
       if (!active) return;
-      setSessions(nextSessions.filter((item) => item.startsAt && new Date(item.startsAt).getTime() >= Date.now()).slice(0, 3));
+      setSessions(nextSessions
+        .filter((item) => item.status === "scheduled" && new Date(item.startsAt).getTime() >= Date.now())
+        .slice(0, 3));
       setBalance(nextBalance);
       setPractice(nextPractice);
       setError("");
@@ -83,7 +86,11 @@ export function DashboardView() {
           <HelpNowButton className="mt-5" />
         </section>
         <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
-          <DashboardStat label="Time credits" value={loading ? "—" : `${balance} min`} detail="One credit is one minute." />
+          <DashboardStat
+            label="Time credits"
+            value={loading ? "—" : `${balance} min`}
+            detail={balance < 15 ? "Teach a skill to earn more credits." : "One credit is one minute."}
+          />
           <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-5"><p className="text-[10px] uppercase tracking-wider text-slate-500">Skills you offer</p><div className="mt-3 flex flex-wrap gap-2">{profile.canTeach.slice(0, 4).map((skill) => <span key={skill} className="rounded-full border border-emerald-200/15 px-2.5 py-1 text-[11px] text-emerald-100">{skill}</span>)}{profile.canTeach.length === 0 ? <Link href="/profile" className="text-xs text-slate-400 hover:text-white">Add your skills in Profile</Link> : null}</div></div>
         </section>
       </div>

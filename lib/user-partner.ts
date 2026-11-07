@@ -24,6 +24,6 @@ export function publicUserToPartner(user: PublicUser): Partner {
     blurb:
       user.domainInterests.length > 0
         ? user.domainInterests.slice(0, 3).join(" · ")
-        : "Building with peers on Skillin",
+        : "Learning with peers on Skillin",
   };
 }

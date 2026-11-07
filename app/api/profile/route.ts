@@ -20,6 +20,22 @@ function asStringList(value: unknown): string[] {
     .filter(Boolean);
 }
 
+function calculateStreak(dates: Date[]) {
+  const days = new Set(dates.map((date) => {
+    const day = new Date(date);
+    return new Date(day.getFullYear(), day.getMonth(), day.getDate()).getTime();
+  }));
+  let cursor = new Date();
+  cursor = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate());
+  if (!days.has(cursor.getTime())) cursor.setDate(cursor.getDate() - 1);
+  let streak = 0;
+  while (days.has(cursor.getTime())) {
+    streak += 1;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  return streak;
+}
+
 function profileBody(user: {
   displayName?: string | null;
   bio?: string | null;
@@ -54,7 +70,7 @@ export async function GET() {
   try {
     await connectDB();
     const user = await User.findOne({ username })
-      .select("username displayName bio skillsHave skillsHaveLevels skillsLearn domainInterests isProfileComplete followers following timezone")
+      .select("username displayName bio skillsHave skillsHaveLevels skillsLearn domainInterests isProfileComplete timezone")
       .lean();
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
@@ -183,22 +199,6 @@ export async function PUT(request: Request) {
 
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
-    function calculateStreak(dates: Date[]) {
-      const days = new Set(dates.map((date) => {
-        const day = new Date(date);
-        return new Date(day.getFullYear(), day.getMonth(), day.getDate()).getTime();
-      }));
-      let cursor = new Date();
-      cursor = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate());
-      if (!days.has(cursor.getTime())) cursor.setDate(cursor.getDate() - 1);
-      let streak = 0;
-      while (days.has(cursor.getTime())) {
-        streak += 1;
-        cursor.setDate(cursor.getDate() - 1);
-      }
-      return streak;
     }
 
     return NextResponse.json({

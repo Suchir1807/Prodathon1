@@ -13,6 +13,7 @@ type SearchUser = {
   username: string;
   displayName: string;
   skillsHave: string[];
+  skillsLearn: string[];
 };
 
 export function GlobalUserSearch() {
@@ -98,7 +99,9 @@ export function GlobalUserSearch() {
                         <span className="block truncate text-sm text-white">{name}</span>
                         <span className="block truncate text-xs text-slate-500">
                           @{user.username}
-                          {user.skillsHave.length ? ` · ${user.skillsHave.slice(0, 2).join(", ")}` : ""}
+                          {[...user.skillsHave, ...user.skillsLearn].length
+                            ? ` · ${[...user.skillsHave, ...user.skillsLearn].slice(0, 2).join(", ")}`
+                            : ""}
                         </span>
                       </span>
                     </Link>

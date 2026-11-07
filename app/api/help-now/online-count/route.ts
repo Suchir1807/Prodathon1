@@ -16,7 +16,6 @@ export async function GET(request: Request) {
     const count = await User.countDocuments({
       _id: { $ne: current._id },
       availableUntil: { $gt: now },
-      lastSeen: { $gte: new Date(now.getTime() - 5 * 60_000) },
       $or: tokens.flatMap((token) => {
         const matcher = new RegExp(escapeRegex(token), "i");
         return [{ skillsHave: matcher }, { availableFor: matcher }];

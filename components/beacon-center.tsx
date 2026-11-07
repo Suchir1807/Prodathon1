@@ -172,7 +172,7 @@ export function BeaconCenter() {
                 </p>
                 <p className="mt-1 text-xs text-slate-300">
                   Needs <strong className="text-white">{beacon.missingSkill}</strong> · posted by{" "}
-                  <Link href={`/profile/${beacon.author.id}`} className="text-red-200 underline-offset-2 hover:underline">
+                  <Link href={`/u/${encodeURIComponent(beacon.author.username)}`} className="text-red-200 underline-offset-2 hover:underline">
                     {beacon.author.displayName.trim() || `@${beacon.author.username}`}
                   </Link>
                 </p>

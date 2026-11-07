@@ -11,7 +11,7 @@ export async function ensureCreditAccount(userId: Types.ObjectId) {
     await session.withTransaction(async () => {
       await CreditAccount.updateOne(
         { userId },
-        { $setOnInsert: { balance: 60 } },
+        { $setOnInsert: { balance: 2 } },
         { upsert: true, session },
       );
       await CreditLedger.updateOne(
@@ -21,7 +21,7 @@ export async function ensureCreditAccount(userId: Types.ObjectId) {
             userId,
             counterpartyId: null,
             sessionId: null,
-            amount: 60,
+            amount: 2,
             type: "starter",
             idempotencyKey: "starter:welcome",
           },

@@ -17,14 +17,6 @@ type Member = {
   skillsLearn?: string[];
 };
 
-type UpcomingSession = {
-  id: string;
-  topic: string;
-  startsAt: string;
-  durationMinutes: number;
-  roomId: string;
-};
-
 type Exchange = {
   id: string;
   status: "active" | "paused" | "ended";
@@ -32,21 +24,29 @@ type Exchange = {
   weeklyGoal: string;
   createdAt: string;
   members: Member[];
-  upcomingSessions: UpcomingSession[];
+  upcomingSessions: { id: string; topic: string; startsAt: string; durationMinutes: number; roomId: string }[];
 };
 
 type Appointment = {
   id: string;
-  exchangeId: string;
+  exchangeId: string | null;
+  kind: "scheduled" | "help_now";
   topic: string;
   startsAt: string;
   durationMinutes: number;
-  status: "scheduled" | "completed" | "cancelled";
+  status: "scheduled" | "completed" | "cancelled" | "no_show";
   teacherId: string;
   learnerId: string;
   roomId: string;
   partner: { id: string; username: string; displayName: string } | null;
   reviews: { reviewerId: string; rating: number; feedback: string }[];
+};
+
+type PartnerRequest = {
+  id: string;
+  createdAt: string;
+  sender?: Member;
+  recipient?: Member;
 };
 
 type Ask = {
@@ -79,111 +79,6 @@ function PageHeading({ eyebrow, title, description }: { eyebrow: string; title: 
       <h1 className="mt-2 font-heading text-3xl font-semibold tracking-tight text-white">{title}</h1>
       <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">{description}</p>
     </header>
-  );
-}
-
-export function ExchangesPage() {
-  const [exchanges, setExchanges] = useState<Exchange[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [goalDrafts, setGoalDrafts] = useState<Record<string, string>>({});
-  const [savingId, setSavingId] = useState("");
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await requestJson<{ exchanges: Exchange[] }>("/api/exchanges");
-      setExchanges(data.exchanges);
-      setGoalDrafts(Object.fromEntries(data.exchanges.map((item) => [item.id, item.weeklyGoal])));
-      setError("");
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Unable to load Exchanges.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { void load(); }, [load]);
-
-  async function saveGoal(exchange: Exchange) {
-    setSavingId(exchange.id);
-    try {
-      await requestJson(`/api/exchanges/${exchange.id}`, {
-        method: "PATCH",
-        body: JSON.stringify({ weeklyGoal: goalDrafts[exchange.id] ?? "" }),
-      });
-      setError("");
-      await load();
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Unable to save the shared goal.");
-    } finally {
-      setSavingId("");
-    }
-  }
-
-  async function updateStatus(exchange: Exchange, status: "active" | "paused" | "ended") {
-    setSavingId(exchange.id);
-    try {
-      await requestJson(`/api/exchanges/${exchange.id}`, { method: "PATCH", body: JSON.stringify({ status }) });
-      await load();
-      setError("");
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Unable to update this Exchange.");
-    } finally {
-      setSavingId("");
-    }
-  }
-
-  return (
-    <div className="mx-auto max-w-6xl px-4 py-8 md:px-6">
-      <PageHeading eyebrow="Keep learning together" title="Your Exchanges" description="Ongoing peer partnerships with a shared weekly goal and a rhythm that works for both of you." />
-      {error ? <p role="alert" className="mb-4 rounded-lg border border-rose-400/20 bg-rose-400/5 p-3 text-sm text-rose-200">{error}</p> : null}
-      {loading ? <p className="rounded-xl border border-white/10 bg-white/[0.03] p-6 text-sm text-slate-400">Loading your Exchanges…</p> : exchanges.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-white/15 p-8 text-center">
-          <Handshake className="mx-auto size-8 text-emerald-300" />
-          <h2 className="mt-3 font-heading text-lg font-semibold text-white">Your next Exchange starts with a conversation.</h2>
-          <p className="mx-auto mt-2 max-w-md text-sm text-slate-400">Find a peer whose skills complement yours, or respond to an Ask to start learning and teaching together.</p>
-          <div className="mt-5 flex justify-center gap-2">
-            <Button asChild size="sm"><Link href="/find-partners">Find a partner</Link></Button>
-            <Button asChild size="sm" variant="outline"><Link href="/asks">Explore Asks</Link></Button>
-          </div>
-        </div>
-      ) : (
-        <div className="grid gap-4">
-          {exchanges.map((exchange) => (
-            <article key={exchange.id} className="rounded-2xl border border-white/10 bg-slate-950/45 p-5 backdrop-blur-xl">
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div>
-                  <p className="text-[10px] font-semibold tracking-[0.14em] text-emerald-200/65 uppercase">{exchange.status} exchange · {exchange.cadence}</p>
-                  <div className="mt-3 flex flex-wrap gap-3">
-                    {exchange.members.map((member) => <span key={member.id} className="inline-flex items-center gap-2 text-sm text-white"><UserAvatar name={member.displayName} className="size-8 text-[10px]" />{member.displayName}</span>)}
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  {exchange.status !== "ended" ? (
-                    <Button size="sm" variant="outline" disabled={savingId === exchange.id} onClick={() => void updateStatus(exchange, exchange.status === "paused" ? "active" : "paused")}>
-                      {exchange.status === "paused" ? "Resume" : "Pause"}
-                    </Button>
-                  ) : null}
-                  {exchange.status !== "ended" ? <Button size="sm" variant="ghost" disabled={savingId === exchange.id} onClick={() => void updateStatus(exchange, "ended")}>End Exchange</Button> : null}
-                </div>
-              </div>
-              <label className="mt-5 block text-xs font-medium text-slate-400" htmlFor={`goal-${exchange.id}`}>Shared weekly goal</label>
-              <div className="mt-2 flex flex-col gap-2 sm:flex-row">
-                <input id={`goal-${exchange.id}`} value={goalDrafts[exchange.id] ?? ""} onChange={(event) => setGoalDrafts((value) => ({ ...value, [exchange.id]: event.target.value }))} maxLength={1000} placeholder="What are you both working toward learning?" className="min-w-0 flex-1 rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/60" />
-                <Button size="sm" variant="outline" loading={savingId === exchange.id} onClick={() => void saveGoal(exchange)}>Save goal</Button>
-              </div>
-              <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-white/8 pt-4">
-                <p className="text-xs text-slate-400">{exchange.upcomingSessions.length ? `${exchange.upcomingSessions.length} upcoming Session${exchange.upcomingSessions.length === 1 ? "" : "s"}` : "No Session booked yet"}</p>
-                <Button asChild size="sm"><Link href="/sessions">Book a Session <ArrowRight /></Link></Button>
-              </div>
-            </article>
-          ))}
-        </div>
-      )}
-      <button type="button" onClick={() => void load()} className="mt-5 inline-flex items-center gap-2 text-xs text-slate-400 hover:text-white"><RefreshCw className="size-3.5" />Refresh</button>
-    </div>
   );
 }
 
@@ -224,7 +119,7 @@ export function AsksPage() {
     setBusy(true);
     try {
       const result = await requestJson<{ exchangeId: string }>(`/api/asks/${ask.id}/accept`, { method: "POST", body: "{}" });
-      router.push(`/exchanges`);
+      router.push(`/sessions`);
       return result;
     } catch (reason) { setError(reason instanceof Error ? reason.message : "Unable to respond to this Ask."); }
     finally { setBusy(false); }
@@ -232,7 +127,7 @@ export function AsksPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 md:px-6">
-      <PageHeading eyebrow="Ask your community" title="Skill Asks" description="Share a specific skill you can offer and the one you want to learn. When someone accepts, you can start an Exchange together." />
+      <PageHeading eyebrow="Ask your community" title="Skill Asks" description="Share a specific skill you can offer and the one you want to learn. When someone responds, arrange a Session together." />
       {error ? <p role="alert" className="mb-4 rounded-lg border border-rose-400/20 bg-rose-400/5 p-3 text-sm text-rose-200">{error}</p> : null}
       <form onSubmit={(event) => void publish(event)} className="mb-7 grid gap-3 rounded-2xl border border-emerald-300/15 bg-emerald-300/[0.035] p-4 sm:grid-cols-2 sm:p-5">
         <label className="text-xs text-slate-400">I can teach<input required maxLength={80} value={skillOffered} onChange={(event) => setSkillOffered(event.target.value)} placeholder="e.g. Figma prototyping" className="mt-1.5 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/60" /></label>
@@ -259,7 +154,10 @@ export function SessionsPage() {
   const { data: authSession } = useSession();
   const [sessions, setSessions] = useState<Appointment[]>([]);
   const [exchanges, setExchanges] = useState<Exchange[]>([]);
+  const [received, setReceived] = useState<PartnerRequest[]>([]);
+  const [sent, setSent] = useState<PartnerRequest[]>([]);
   const [balance, setBalance] = useState(0);
+  const [tab, setTab] = useState<"Upcoming" | "Requests" | "Past">("Upcoming");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [busyId, setBusyId] = useState("");
@@ -272,12 +170,14 @@ export function SessionsPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [sessionData, exchangeData, creditData] = await Promise.all([
+      const [sessionData, exchangeData, creditData, requestData] = await Promise.all([
         requestJson<{ sessions: Appointment[]; balance: number }>("/api/sessions"),
         requestJson<{ exchanges: Exchange[] }>("/api/exchanges"),
         requestJson<{ balance: number }>("/api/credits"),
+        requestJson<{ received: PartnerRequest[]; sent: PartnerRequest[] }>("/api/exchange-invites"),
       ]);
       setSessions(sessionData.sessions); setBalance(creditData.balance); setExchanges(exchangeData.exchanges);
+      setReceived(requestData.received); setSent(requestData.sent);
       setError("");
     } catch (reason) { setError(reason instanceof Error ? reason.message : "Unable to load Sessions."); }
     finally { setLoading(false); }
@@ -315,37 +215,87 @@ export function SessionsPage() {
     finally { setBusyId(""); }
   }
 
+  async function respondToRequest(request: PartnerRequest, action: "accept" | "decline") {
+    setBusyId(request.id);
+    try {
+      await requestJson("/api/exchange-invites", {
+        method: "PATCH",
+        body: JSON.stringify({ requestId: request.id, action, idempotencyKey: crypto.randomUUID() }),
+      });
+      await load();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Unable to update partner request.");
+    } finally {
+      setBusyId("");
+    }
+  }
+
+  const futureSessions = sessions.filter((item) =>
+    item.status === "scheduled" && new Date(item.startsAt).getTime() >= Date.now(),
+  );
+  const pastSessions = sessions.filter((item) =>
+    item.status !== "scheduled" || new Date(item.startsAt).getTime() < Date.now(),
+  );
+  const shownSessions = tab === "Past"
+    ? pastSessions
+    : [...futureSessions].sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime());
+  const allInvites = tab === "Requests" ? [...received, ...sent] : [];
+
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 md:px-6">
-      <PageHeading eyebrow="Make time to learn" title="Sessions" description={`Book focused time with an Exchange partner. Your current balance is ${balance} minutes.`} />
+      <PageHeading eyebrow="Learn together" title="Sessions" description={`Manage upcoming sessions, partner requests, and your learning history. Balance: ${balance} time credits.`} />
       {error ? <p role="alert" className="mb-4 rounded-lg border border-rose-400/20 bg-rose-400/5 p-3 text-sm text-rose-200">{error}</p> : null}
-      <form onSubmit={(event) => void book(event)} className="mb-7 grid gap-3 rounded-2xl border border-white/10 bg-slate-950/45 p-4 sm:grid-cols-2 sm:p-5">
-        <h2 className="font-heading text-lg font-semibold text-white sm:col-span-2">Book a Session</h2>
-        <label className="text-xs text-slate-400 sm:col-span-2">Exchange<select required value={bookingExchange} onChange={(event) => { setBookingExchange(event.target.value); setTeacherId(""); }} className="mt-1.5 w-full rounded-lg border border-white/10 bg-[#07110c] px-3 py-2 text-sm text-white"><option value="">Choose an active Exchange</option>{exchanges.filter((exchange) => exchange.status === "active").map((exchange) => <option key={exchange.id} value={exchange.id}>{exchange.members.map((member) => member.displayName).join(" + ")}</option>)}</select></label>
-        <label className="text-xs text-slate-400">What would you like to learn?<input required minLength={3} maxLength={200} value={topic} onChange={(event) => setTopic(event.target.value)} placeholder="Session topic" className="mt-1.5 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white" /></label>
-        <label className="text-xs text-slate-400">Your teacher<select required value={teacherId} onChange={(event) => setTeacherId(event.target.value)} className="mt-1.5 w-full rounded-lg border border-white/10 bg-[#07110c] px-3 py-2 text-sm text-white"><option value="">Choose your partner</option>{teacherOptions.map((member) => <option key={member.id} value={member.id}>{member.displayName}</option>)}</select></label>
-        <label className="text-xs text-slate-400">Start time<input required type="datetime-local" value={startsAt} onChange={(event) => setStartsAt(event.target.value)} className="mt-1.5 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white" /></label>
-        <label className="text-xs text-slate-400">Duration<select value={durationMinutes} onChange={(event) => setDurationMinutes(Number(event.target.value))} className="mt-1.5 w-full rounded-lg border border-white/10 bg-[#07110c] px-3 py-2 text-sm text-white">{[15, 30, 45, 60, 90, 120, 180].map((minutes) => <option key={minutes} value={minutes}>{minutes} minutes</option>)}</select></label>
-        <div className="sm:col-span-2"><Button type="submit" size="sm" loading={busyId === "booking"} disabled={!exchanges.some((exchange) => exchange.status === "active")}>Book Session</Button><span className="ml-3 text-xs text-slate-500">The learner reserves one time credit per minute.</span></div>
-      </form>
-      <div className="mb-3 flex items-center justify-between"><h2 className="font-heading text-lg font-semibold text-white">Your Sessions</h2><Button variant="ghost" size="sm" onClick={() => void load()}><RefreshCw />Refresh</Button></div>
-      {loading ? <p className="text-sm text-slate-400">Loading Sessions…</p> : sessions.length === 0 ? <p className="rounded-xl border border-dashed border-white/15 p-6 text-sm text-slate-400">No Sessions yet. Start an Exchange and book your first learning session.</p> : (
+      <nav role="tablist" aria-label="Session lists" className="mb-5 flex gap-1 rounded-xl border border-white/10 bg-white/[0.025] p-1">
+        {(["Upcoming", "Requests", "Past"] as const).map((value) => <button key={value} role="tab" aria-selected={tab === value} onClick={() => setTab(value)} className={`rounded-lg px-4 py-2 text-xs ${tab === value ? "bg-emerald-300/10 text-emerald-100" : "text-slate-400"}`}>{value}{value === "Requests" && received.length ? ` · ${received.length}` : ""}</button>)}
+      </nav>
+      {tab === "Upcoming" ? <details className="mb-5 rounded-xl border border-white/10 bg-slate-950/45 p-4">
+        <summary className="cursor-pointer text-sm font-medium text-white">Schedule a Session</summary>
+        <form onSubmit={(event) => void book(event)} className="mt-4 grid gap-3 sm:grid-cols-2">
+          <label className="text-xs text-slate-400 sm:col-span-2">Learning partner<select required value={bookingExchange} onChange={(event) => { setBookingExchange(event.target.value); setTeacherId(""); }} className="mt-1.5 w-full rounded-lg border border-white/10 bg-[#07110c] px-3 py-2 text-sm text-white"><option value="">Choose a partner</option>{exchanges.filter((exchange) => exchange.status === "active").map((exchange) => <option key={exchange.id} value={exchange.id}>{exchange.members.map((member) => member.displayName).join(" + ")}</option>)}</select></label>
+          <label className="text-xs text-slate-400">Skill or topic<input required minLength={3} maxLength={200} value={topic} onChange={(event) => setTopic(event.target.value)} placeholder="What would you like to practice?" className="mt-1.5 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white" /></label>
+          <label className="text-xs text-slate-400">Helper<select required value={teacherId} onChange={(event) => setTeacherId(event.target.value)} className="mt-1.5 w-full rounded-lg border border-white/10 bg-[#07110c] px-3 py-2 text-sm text-white"><option value="">Choose a partner</option>{teacherOptions.map((member) => <option key={member.id} value={member.id}>{member.displayName}</option>)}</select></label>
+          <label className="text-xs text-slate-400">Start time<input required type="datetime-local" value={startsAt} onChange={(event) => setStartsAt(event.target.value)} className="mt-1.5 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white" /></label>
+          <label className="text-xs text-slate-400">Duration<select value={durationMinutes} onChange={(event) => setDurationMinutes(Number(event.target.value))} className="mt-1.5 w-full rounded-lg border border-white/10 bg-[#07110c] px-3 py-2 text-sm text-white">{[15, 30, 45, 60, 90, 120, 180].map((minutes) => <option key={minutes} value={minutes}>{minutes} minutes</option>)}</select></label>
+          <div className="sm:col-span-2"><Button type="submit" size="sm" loading={busyId === "booking"} disabled={!exchanges.some((exchange) => exchange.status === "active")}>Schedule</Button><span className="ml-3 text-xs text-slate-500">The learner reserves one time credit per minute.</span></div>
+        </form>
+      </details> : null}
+      {loading ? <p className="rounded-xl border border-white/10 p-6 text-sm text-slate-400">Loading {tab.toLowerCase()}…</p> : tab === "Requests" ? (
+        allInvites.length ? <div className="grid gap-3">{allInvites.map((item) => {
+          const incoming = Boolean(item.sender);
+          const person = item.sender ?? item.recipient;
+          if (!person) return null;
+          return <article key={item.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.025] p-4"><div className="flex items-center gap-3"><UserAvatar name={person.displayName} className="size-9 text-[10px]" /><div><p className="text-sm text-white">{incoming ? `${person.displayName} sent you a partner request` : `Request sent to ${person.displayName}`}</p><p className="mt-1 text-[11px] text-slate-500">{person.skillsHave.slice(0, 3).join(" · ") || "Skill exchange"}</p></div></div>{incoming ? <div className="flex gap-2"><Button size="sm" disabled={busyId === item.id} onClick={() => void respondToRequest(item, "accept")}>Accept</Button><Button size="sm" variant="outline" disabled={busyId === item.id} onClick={() => void respondToRequest(item, "decline")}>Decline</Button></div> : <span className="text-xs text-slate-500">Waiting for a response</span>}</article>;
+        })}</div> : <p className="rounded-xl border border-dashed border-white/15 p-6 text-sm text-slate-400">No partner requests right now.</p>
+      ) : shownSessions.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-white/15 p-8 text-center"><p className="text-sm text-slate-300">{tab === "Past" ? "Completed Sessions and past activity will appear here." : "No upcoming Sessions yet."}</p><p className="mt-2 text-xs text-slate-500">Use Help Now for an on-demand micro-session or schedule time with a learning partner.</p></div>
+      ) : (
         <div className="grid gap-3">
-          {sessions.map((appointment) => <article key={appointment.id} className="rounded-xl border border-white/10 bg-white/[0.025] p-4">
+          {shownSessions.map((appointment) => {
+            const shared = sessions.filter((item) => item.partner?.id === appointment.partner?.id)
+              .sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime());
+            const sequence = shared.findIndex((item) => item.id === appointment.id) + 1;
+            return <article key={appointment.id} className="rounded-xl border border-white/10 bg-white/[0.025] p-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="flex items-start gap-3"><span className="grid size-9 place-items-center rounded-lg border border-emerald-300/15 bg-emerald-300/[0.05] text-emerald-200"><CalendarClock className="size-4" /></span><div><h3 className="font-medium text-white">{appointment.topic}</h3><p className="mt-1 text-xs text-slate-400">{appointment.partner?.displayName ?? "Exchange partner"} · {new Date(appointment.startsAt).toLocaleString()} · {appointment.durationMinutes} min</p></div></div>
+              <div className="flex items-start gap-3"><UserAvatar name={appointment.partner?.displayName ?? "Learning partner"} className="size-9 text-[10px]" /><div><h3 className="font-medium text-white">{appointment.partner?.displayName ?? "Learning partner"}</h3><p className="mt-1 text-sm text-emerald-100">{appointment.topic}</p><p className="mt-1 text-xs text-slate-400">{new Date(appointment.startsAt).toLocaleString()} · {appointment.durationMinutes} min · {appointment.durationMinutes} credits</p>{sequence > 1 ? <p className="mt-1 text-[10px] text-slate-500">{ordinal(sequence)} session with {appointment.partner?.displayName}</p> : null}</div></div>
               <span className="rounded-full border border-white/10 px-2.5 py-1 text-[10px] text-slate-300">{appointment.status}</span>
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
-              <Button asChild size="sm" variant="outline"><Link href={`/session-room/${appointment.roomId}`}><BookOpen />Open SessionRoom</Link></Button>
-              {appointment.status === "scheduled" ? <><Button size="sm" variant="ghost" disabled={busyId === appointment.id} onClick={() => void updateStatus(appointment, "completed")}>Mark complete</Button><Button size="sm" variant="ghost" disabled={busyId === appointment.id} onClick={() => void updateStatus(appointment, "cancelled")}>Cancel</Button></> : null}
+              <Button asChild size="sm" variant="outline"><Link href={`/session-room/${appointment.roomId}`}><BookOpen />{appointment.status === "scheduled" ? "Join room" : "Open room"}</Link></Button>
+              {appointment.status === "scheduled" && appointment.kind !== "help_now" ? <><Button size="sm" variant="ghost" disabled={busyId === appointment.id} onClick={() => void updateStatus(appointment, "completed")}>Mark complete</Button><Button size="sm" variant="ghost" disabled={busyId === appointment.id} onClick={() => void updateStatus(appointment, "cancelled")}>Cancel</Button></> : null}
               {appointment.status === "completed" && !appointment.reviews.some((review) => review.reviewerId === authSession?.user?.id) ? <ReviewForm sessionId={appointment.id} onSubmitted={() => void load()} /> : null}
             </div>
-          </article>)}
+          </article>;
+          })}
         </div>
       )}
     </div>
   );
+}
+
+function ordinal(value: number) {
+  const mod = value % 100;
+  if (mod >= 11 && mod <= 13) return `${value}th`;
+  return `${value}${value % 10 === 1 ? "st" : value % 10 === 2 ? "nd" : value % 10 === 3 ? "rd" : "th"}`;
 }
 
 function ReviewForm({ sessionId, onSubmitted }: { sessionId: string; onSubmitted: () => void }) {
@@ -374,13 +324,17 @@ function ReviewForm({ sessionId, onSubmitted }: { sessionId: string; onSubmitted
 
 type Room = {
   id: string; sessionId: string; topic: string; startsAt: string; durationMinutes: number;
+  learnerId: string; teacherId: string;
   sessionStatus: string; notes: string; revision: number; updatedAt: string; lastEditedBy: string | null;
+  kind: "scheduled" | "help_now"; helpRequestId: string | null; aiBrief: string; jitsiUrl: string;
+  completionConfirmedBy: string[]; recap: string; practiceSteps: string[]; reviewedBy: string[];
   members: Member[];
 };
 
 type RoomMessage = { id: string; senderId: string; receiverId: string; content: string; timestamp: string };
 
 export function SessionRoomView({ roomId }: { roomId: string }) {
+  const { data: authSession } = useSession();
   const [room, setRoom] = useState<Room | null>(null);
   const [notes, setNotes] = useState("");
   const [messages, setMessages] = useState<RoomMessage[]>([]);
@@ -388,6 +342,11 @@ export function SessionRoomView({ roomId }: { roomId: string }) {
   const [partnerId, setPartnerId] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [remainingSeconds, setRemainingSeconds] = useState(0);
+  const [quickRating, setQuickRating] = useState<1 | 5>(5);
+  const [reviewNote, setReviewNote] = useState("");
+  const [safetyReason, setSafetyReason] = useState("");
+  const [busyAction, setBusyAction] = useState("");
   const router = useRouter();
 
   const loadRoom = useCallback(async () => {
@@ -410,6 +369,16 @@ export function SessionRoomView({ roomId }: { roomId: string }) {
     const timer = window.setInterval(() => { if (document.visibilityState === "visible") void loadMessages(); }, 4000);
     return () => window.clearInterval(timer);
   }, [loadRoom, loadMessages]);
+
+  useEffect(() => {
+    if (!room || room.kind !== "help_now" || room.sessionStatus !== "scheduled") return;
+    const update = () => setRemainingSeconds(Math.max(0,
+      Math.ceil((new Date(room.startsAt).getTime() + room.durationMinutes * 60_000 - Date.now()) / 1000),
+    ));
+    update();
+    const timer = window.setInterval(update, 1000);
+    return () => window.clearInterval(timer);
+  }, [room]);
 
   async function saveNotes() {
     if (!room) return;
@@ -434,7 +403,79 @@ export function SessionRoomView({ roomId }: { roomId: string }) {
     }
   }
 
+  async function extendSession() {
+    if (!room?.helpRequestId) return;
+    setBusyAction("extend");
+    try {
+      await requestJson(`/api/help-now/requests/${room.helpRequestId}/extend`, {
+        method: "POST",
+        body: JSON.stringify({ consent: true }),
+      });
+      await loadRoom();
+    } catch (reason) { setError(reason instanceof Error ? reason.message : "Unable to extend the Session."); }
+    finally { setBusyAction(""); }
+  }
+
+  async function confirmCompletion() {
+    if (!room?.helpRequestId) return;
+    setBusyAction("complete");
+    try {
+      await requestJson(`/api/help-now/requests/${room.helpRequestId}/complete`, { method: "POST", body: "{}" });
+      await loadRoom();
+    } catch (reason) { setError(reason instanceof Error ? reason.message : "Unable to confirm completion."); }
+    finally { setBusyAction(""); }
+  }
+
+  async function reportNoShow() {
+    if (!room) return;
+    setBusyAction("cancel");
+    try {
+      await requestJson(`/api/sessions/${room.sessionId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ status: "no_show" }),
+      });
+      await loadRoom();
+    } catch (reason) { setError(reason instanceof Error ? reason.message : "Unable to end this Session."); }
+    finally { setBusyAction(""); }
+  }
+
+  async function leaveQuickReview() {
+    if (!room) return;
+    setBusyAction("review");
+    try {
+      await requestJson(`/api/sessions/${room.sessionId}/review`, {
+        method: "POST",
+        body: JSON.stringify({ rating: quickRating, feedback: reviewNote, skills: [] }),
+      });
+      await loadRoom();
+    } catch (reason) { setError(reason instanceof Error ? reason.message : "Unable to save review."); }
+    finally { setBusyAction(""); }
+  }
+
+  async function submitSafetyRecord(block: boolean) {
+    if (!room?.helpRequestId || !partnerId || safetyReason.trim().length < 5) {
+      setError("Enter at least five characters describing the issue.");
+      return;
+    }
+    setBusyAction(block ? "block" : "report");
+    try {
+      await requestJson("/api/help-now/safety", {
+        method: "POST",
+        body: JSON.stringify({
+          requestId: room.helpRequestId,
+          reportedUserId: partnerId,
+          reason: safetyReason,
+          block,
+        }),
+      });
+      setSafetyReason("");
+      setError(block ? "Member blocked from future Help Now matches." : "Report sent for review.");
+    } catch (reason) { setError(reason instanceof Error ? reason.message : "Unable to submit safety report."); }
+    finally { setBusyAction(""); }
+  }
+
   const partnerName = room?.members.find((member) => member.id === partnerId)?.displayName ?? "Your partner";
+  const currentUserId = authSession?.user?.id ?? "";
 
   return (
     <div className="mx-auto grid min-h-[calc(100dvh-3.5rem)] max-w-7xl gap-5 px-4 py-6 lg:grid-cols-[minmax(0,1.3fr)_minmax(320px,0.7fr)] md:px-6">
@@ -442,9 +483,33 @@ export function SessionRoomView({ roomId }: { roomId: string }) {
         {error ? <p role="alert" className="mb-3 rounded-lg border border-rose-400/20 bg-rose-400/5 p-3 text-sm text-rose-200">{error}<button onClick={() => { void loadRoom(); void loadMessages(); }} className="ml-2 underline">Retry</button></p> : null}
         <button type="button" onClick={() => router.push("/sessions")} className="mb-4 w-fit text-xs text-emerald-200 hover:text-white">← Back to Sessions</button>
         {room ? <>
-          <p className="text-[10px] font-semibold tracking-[0.15em] text-emerald-200/70 uppercase">SessionRoom · {room.sessionStatus}</p>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-[10px] font-semibold tracking-[0.15em] text-emerald-200/70 uppercase">Session room · {room.sessionStatus}</p>
+            {room.kind === "help_now" && room.jitsiUrl ? <a href={room.jitsiUrl} target="_blank" rel="noreferrer" className="rounded-lg border border-emerald-200/20 px-3 py-2 text-xs text-emerald-100 hover:bg-emerald-200/5">Join video room</a> : null}
+          </div>
           <h1 className="mt-2 font-heading text-2xl font-semibold text-white">{room.topic}</h1>
           <p className="mt-2 text-sm text-slate-400">{new Date(room.startsAt).toLocaleString()} · {room.durationMinutes} minutes · {room.members.map((member) => member.displayName).join(" + ")}</p>
+          {room.kind === "help_now" ? (
+            <section className="mt-5 rounded-xl border border-emerald-300/15 bg-emerald-300/[0.035] p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div><p className="text-[10px] uppercase tracking-wider text-emerald-200/70">Micro-session timer</p><p className="mt-1 font-mono text-2xl text-white">{String(Math.floor(remainingSeconds / 60)).padStart(2, "0")}:{String(remainingSeconds % 60).padStart(2, "0")}</p></div>
+                {currentUserId === room.learnerId && room.sessionStatus === "scheduled" && room.durationMinutes < 180 ? <Button size="sm" variant="outline" loading={busyAction === "extend"} onClick={() => void extendSession()}>+15 min</Button> : null}
+                {room.sessionStatus === "scheduled" ? <Button size="sm" variant="ghost" loading={busyAction === "complete"} onClick={() => void confirmCompletion()}>Confirm complete</Button> : null}
+              </div>
+              <p className="mt-2 text-[10px] text-slate-500">{room.completionConfirmedBy.length}/2 people confirmed. Extending reserves 15 additional credits from the learner.</p>
+              {room.aiBrief ? <p className="mt-3 border-t border-white/8 pt-3 text-sm text-slate-300"><span className="text-emerald-100">Helper brief: </span>{room.aiBrief}</p> : null}
+              {room.sessionStatus === "scheduled" ? <Button size="sm" variant="ghost" className="mt-2 text-rose-200" loading={busyAction === "cancel"} onClick={() => void reportNoShow()}>Cancel / report no-show</Button> : null}
+              {room.sessionStatus === "completed" ? (
+                <div className="mt-4 border-t border-white/8 pt-4">
+                  <h2 className="text-sm font-semibold text-white">Session recap</h2>
+                  <p className="mt-2 text-sm text-slate-300">{room.recap || "Preparing your recap…"}</p>
+                  {room.practiceSteps.length ? <ol className="mt-2 list-decimal space-y-1 pl-5 text-xs text-slate-300">{room.practiceSteps.map((step) => <li key={step}>{step}</li>)}</ol> : null}
+                  {!room.reviewedBy.includes(currentUserId) ? <div className="mt-4 rounded-lg border border-white/10 p-3"><p className="text-xs text-slate-300">Leave a quick review</p><div className="mt-2 flex gap-2"><Button size="sm" variant={quickRating === 5 ? "default" : "outline"} onClick={() => setQuickRating(5)}>👍 Helpful</Button><Button size="sm" variant={quickRating === 1 ? "default" : "outline"} onClick={() => setQuickRating(1)}>👎 Not helpful</Button></div><textarea value={reviewNote} onChange={(event) => setReviewNote(event.target.value)} maxLength={2000} placeholder="Optional note" className="mt-2 w-full rounded border border-white/10 bg-black/30 p-2 text-xs text-white" /><Button size="sm" className="mt-2" loading={busyAction === "review"} onClick={() => void leaveQuickReview()}>Send review</Button></div> : <p className="mt-3 text-xs text-emerald-200">Your review is recorded.</p>}
+                </div>
+              ) : null}
+              {room.sessionStatus === "scheduled" ? <div className="mt-4 flex flex-wrap gap-2 border-t border-white/8 pt-3"><input value={safetyReason} onChange={(event) => setSafetyReason(event.target.value)} minLength={5} maxLength={500} placeholder="Reason for report or block" className="min-w-44 flex-1 rounded border border-white/10 bg-black/30 px-2 py-2 text-xs text-white" /><Button size="sm" variant="outline" loading={busyAction === "report"} onClick={() => void submitSafetyRecord(false)}>Report</Button><Button size="sm" variant="ghost" loading={busyAction === "block"} onClick={() => void submitSafetyRecord(true)}>Block</Button></div> : null}
+            </section>
+          ) : null}
           <div className="mt-6 flex flex-1 flex-col">
             <div className="mb-2 flex items-center justify-between"><label htmlFor="room-notes" className="text-sm font-medium text-white">Shared session notes</label><span className="text-[11px] text-slate-500">{room.lastEditedBy ? "Saved to this room" : "Not saved yet"}</span></div>
             <textarea id="room-notes" value={notes} onChange={(event) => setNotes(event.target.value)} maxLength={20000} placeholder="Capture key ideas, examples, and next steps…" className="min-h-64 flex-1 resize-y rounded-xl border border-white/10 bg-black/25 p-4 text-sm leading-6 text-slate-200 outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/60" />

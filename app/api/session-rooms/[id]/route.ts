@@ -5,6 +5,8 @@ import connectDB from "@/lib/mongodb";
 import { sessionRoomUpdateSchema } from "@/lib/validation/schemas";
 import Session from "@/models/Session";
 import SessionRoom from "@/models/SessionRoom";
+import HelpRequest from "@/models/HelpRequest";
+import SessionReview from "@/models/SessionReview";
 import User from "@/models/User";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -18,15 +20,31 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       User.find({ _id: { $in: access.room.members } }).select("_id username displayName").lean(),
     ]);
     if (!appointment) return NextResponse.json({ error: "Session not found." }, { status: 404 });
+    const [helpRequest, reviews] = appointment.helpRequestId
+      ? await Promise.all([
+          HelpRequest.findById(appointment.helpRequestId).select("recap practiceSteps").lean(),
+          SessionReview.find({ sessionId: appointment._id }).select("reviewerId").lean(),
+        ])
+      : [null, await SessionReview.find({ sessionId: appointment._id }).select("reviewerId").lean()];
     return NextResponse.json({
       room: {
         id: access.room._id.toString(),
         sessionId: appointment._id.toString(),
-        exchangeId: access.room.exchangeId.toString(),
+        exchangeId: access.room.exchangeId?.toString() ?? null,
+        kind: appointment.kind,
+        helpRequestId: appointment.helpRequestId?.toString() ?? null,
         topic: appointment.topic,
         startsAt: appointment.startsAt.toISOString(),
         durationMinutes: appointment.durationMinutes,
+        learnerId: appointment.learnerId.toString(),
+        teacherId: appointment.teacherId.toString(),
         sessionStatus: appointment.status,
+        aiBrief: appointment.aiBrief,
+        jitsiUrl: appointment.jitsiUrl,
+        completionConfirmedBy: appointment.completionConfirmedBy.map((userId) => userId.toString()),
+        recap: helpRequest?.recap ?? "",
+        practiceSteps: helpRequest?.practiceSteps ?? [],
+        reviewedBy: reviews.map((review) => review.reviewerId.toString()),
         notes: access.room.notes,
         revision: access.room.notesRevision,
         updatedAt: access.room.updatedAt.toISOString(),

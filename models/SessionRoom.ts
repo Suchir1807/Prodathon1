@@ -2,7 +2,7 @@ import mongoose, { type Model, Schema, Types } from "mongoose";
 
 export interface ISessionRoom {
   sessionId: Types.ObjectId;
-  exchangeId: Types.ObjectId;
+  exchangeId: Types.ObjectId | null;
   members: Types.ObjectId[];
   notes: string;
   notesRevision: number;
@@ -14,7 +14,7 @@ export interface ISessionRoom {
 const SessionRoomSchema = new Schema<ISessionRoom>(
   {
     sessionId: { type: Schema.Types.ObjectId, ref: "Session", required: true, unique: true },
-    exchangeId: { type: Schema.Types.ObjectId, ref: "Exchange", required: true },
+    exchangeId: { type: Schema.Types.ObjectId, ref: "Exchange", default: null },
     members: {
       type: [{ type: Schema.Types.ObjectId, ref: "User", required: true }],
       required: true,

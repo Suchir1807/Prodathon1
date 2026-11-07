@@ -53,7 +53,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       recipient: recipientId,
       sender: current._id,
       type: "session_review",
-      exchangeId: appointment.exchangeId,
+      ...(appointment.exchangeId ? { exchangeId: appointment.exchangeId } : {}),
       sessionId: appointment._id,
       sessionRoomId: appointment.roomId,
       dedupeKey: `session-review:${review._id}`,

@@ -5,10 +5,7 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 
 import { ProfileSkillGraphForm } from "@/components/profile-skill-graph-form";
-import type {
-  ProfileSocialStats,
-  ProfileSocialUsers,
-} from "@/components/live-id-card";
+import type { ProfileStats } from "@/components/profile-stats-card";
 import { ProfileSkeleton } from "@/components/ui/loading-skeletons";
 import { useIsClient, useProfile } from "@/components/profile-provider";
 import { EMPTY_PROFILE } from "@/lib/catalog";
@@ -21,9 +18,10 @@ type ApiProfile = {
   skillsHave: string[];
   skillsLearn: string[];
   domainInterests: string[];
+  creditBalance?: number;
+  rating?: number;
   isProfileComplete: boolean;
-  socialStats?: Partial<ProfileSocialStats>;
-  socialUsers?: Partial<ProfileSocialUsers>;
+  socialStats?: { sessions?: number };
   error?: string;
 };
 
@@ -48,14 +46,10 @@ export function OnboardingForm() {
   const username = session?.user?.name ?? "";
 
   const [draft, setDraft] = useState<Profile>({ ...EMPTY_PROFILE });
-  const [socialStats, setSocialStats] = useState<ProfileSocialStats>({
+  const [socialStats, setSocialStats] = useState<ProfileStats>({
     sessions: 0,
-    followers: 0,
-    following: 0,
-  });
-  const [socialUsers, setSocialUsers] = useState<ProfileSocialUsers>({
-    followers: [],
-    following: [],
+    credits: 2,
+    rating: 0,
   });
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -94,12 +88,8 @@ export function OnboardingForm() {
           setDraft(apiToProfile(data));
           setSocialStats({
             sessions: socialCount(data.socialStats?.sessions),
-            followers: socialCount(data.socialStats?.followers),
-            following: socialCount(data.socialStats?.following),
-          });
-          setSocialUsers({
-            followers: data.socialUsers?.followers ?? [],
-            following: data.socialUsers?.following ?? [],
+            credits: socialCount(data.creditBalance),
+            rating: typeof data.rating === "number" ? data.rating : 0,
           });
         }
       } catch {
@@ -145,7 +135,7 @@ export function OnboardingForm() {
       const persisted = data.localProfile ?? apiToProfile(data);
       saveProfile(persisted);
       await updateSession({ isProfileComplete: true });
-      setToast("Profile ready — finding your first collaborator…");
+      setToast("Profile ready — finding your first learning partner…");
       window.setTimeout(() => router.push("/find-partners"), 700);
     } catch {
       setToast("Network error. Try again.");
@@ -175,11 +165,9 @@ export function OnboardingForm() {
       mode="onboarding"
       username={username}
       stats={socialStats}
-      socialUsers={socialUsers}
       draft={draft}
       onDraftChange={patchDraft}
       saving={saving}
-      saved={false}
       toast={toast}
       submitLabel="Save profile & find partners"
       onSubmit={handleSubmit}

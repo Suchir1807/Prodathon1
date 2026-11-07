@@ -6,13 +6,13 @@ import { ensureCreditAccount, getCreditBalance } from "@/lib/credit-balance";
 import { requireCurrentUser } from "@/lib/session-user";
 import { sessionBookingSchema } from "@/lib/validation/schemas";
 import CreditAccount from "@/models/CreditAccount";
-import CreditLedger from "@/models/CreditLedger";
 import Exchange from "@/models/Exchange";
 import Notification from "@/models/Notification";
 import Session from "@/models/Session";
 import SessionReview from "@/models/SessionReview";
 import SessionRoom from "@/models/SessionRoom";
 import User from "@/models/User";
+import { postCreditEntry } from "@/lib/credit-ledger";
 
 export async function GET() {
   const current = await requireCurrentUser();
@@ -43,7 +43,9 @@ export async function GET() {
       balance,
       sessions: sessions.map((session) => ({
         id: session._id.toString(),
-        exchangeId: session.exchangeId.toString(),
+        exchangeId: session.exchangeId?.toString() ?? null,
+        kind: session.kind,
+        helpRequestId: session.helpRequestId?.toString() ?? null,
         topic: session.topic,
         startsAt: session.startsAt.toISOString(),
         durationMinutes: session.durationMinutes,
@@ -51,6 +53,9 @@ export async function GET() {
         teacherId: session.teacherId.toString(),
         learnerId: session.learnerId.toString(),
         roomId: session.roomId.toString(),
+        aiBrief: session.aiBrief,
+        jitsiUrl: session.jitsiUrl,
+        completionConfirmedBy: session.completionConfirmedBy.map((id) => id.toString()),
         partner: (() => {
           const partnerId = session.participants.find((id) => !id.equals(current._id))?.toString();
           const partner = partnerId ? usersById.get(partnerId) : null;
@@ -169,15 +174,18 @@ export async function POST(request: Request) {
         return;
       }
 
-      const reserved = await CreditAccount.findOneAndUpdate(
-        { userId: current._id, balance: { $gte: parsed.data.durationMinutes } },
-        { $inc: { balance: -parsed.data.durationMinutes } },
-        { new: true, session: transaction },
-      );
-      if (!reserved) { failure = "credits"; return; }
-
       const sessionId = new mongoose.Types.ObjectId();
       const roomId = new mongoose.Types.ObjectId();
+      const reserved = await postCreditEntry({
+        userId: current._id,
+        counterpartyId: teacherId,
+        sessionId,
+        amount: -parsed.data.durationMinutes,
+        type: "session_spent",
+        idempotencyKey: `${sessionId}:spent`,
+        transaction,
+      });
+      if (!reserved.applied) { failure = "credits"; return; }
       await SessionRoom.create([{
         _id: roomId,
         sessionId,
@@ -188,6 +196,7 @@ export async function POST(request: Request) {
       const [appointment] = await Session.create([{
         _id: sessionId,
         exchangeId: exchange._id,
+        kind: "scheduled",
         participants: exchange.members,
         teacherId,
         learnerId: current._id,
@@ -198,14 +207,6 @@ export async function POST(request: Request) {
         roomId,
         idempotencyKey: parsed.data.idempotencyKey,
         createdBy: current._id,
-      }], { session: transaction });
-      await CreditLedger.create([{
-        userId: current._id,
-        counterpartyId: teacherId,
-        sessionId,
-        amount: -parsed.data.durationMinutes,
-        type: "session_spent",
-        idempotencyKey: `${sessionId}:spent`,
       }], { session: transaction });
       await Notification.create([{
         recipient: teacherId,

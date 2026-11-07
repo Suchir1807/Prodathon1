@@ -1,15 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   ArrowRight,
   Clock3,
   Command,
   Compass,
   CircleHelp,
-  Handshake,
   LayoutDashboard,
   MessageSquare,
   Search,
@@ -27,11 +25,11 @@ import {
 import { Input } from "@/components/ui/input";
 
 const COMMANDS = [
+  { action: "help-now", label: "Help Now", detail: "Get an on-demand skill micro-session", icon: CircleHelp },
   { href: "/dashboard", label: "Dashboard", detail: "Your learning network", icon: LayoutDashboard },
-  { href: "/profile", label: "Skill Passport", detail: "Manage what you offer and want", icon: Compass },
+  { href: "/profile", label: "Profile", detail: "View your learning overview or edit your skills", icon: Compass },
   { href: "/find-partners", label: "Find partners", detail: "Match by complementary skills", icon: UsersRound },
   { href: "/asks", label: "Asks", detail: "Find or publish a skill Ask", icon: CircleHelp },
-  { href: "/exchanges", label: "Exchanges", detail: "Manage ongoing partnerships", icon: Handshake },
   { href: "/sessions", label: "Sessions", detail: "Book time and earn credits", icon: Clock3 },
   { href: "/messages", label: "Messages", detail: "Catch up with your people", icon: MessageSquare },
   { href: "/info", label: "How it works", detail: "Explore the Skillin loop", icon: ArrowRight },
@@ -39,6 +37,7 @@ const COMMANDS = [
 
 export function CommandPalette() {
   const pathname = usePathname();
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
 
@@ -108,12 +107,16 @@ export function CommandPalette() {
             {filteredCommands.length ? filteredCommands.map((item) => {
               const Icon = item.icon;
               return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  aria-current={pathname === item.href ? "page" : undefined}
-                  onClick={() => setOpen(false)}
-                  className="group flex items-center gap-3 rounded-xl px-3 py-3 transition-colors hover:bg-white/[0.06] focus-visible:bg-white/[0.06] focus-visible:outline-none"
+                <button
+                  key={item.href ?? item.action}
+                  type="button"
+                  aria-current={item.href && pathname === item.href ? "page" : undefined}
+                  onClick={() => {
+                    setOpen(false);
+                    if ("action" in item) window.dispatchEvent(new Event("skillin:help-now"));
+                    else if (item.href) router.push(item.href);
+                  }}
+                  className="group flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-white/[0.06] focus-visible:bg-white/[0.06] focus-visible:outline-none"
                 >
                   <span className="grid size-9 shrink-0 place-items-center rounded-lg border border-white/[0.07] bg-white/[0.035] text-slate-400 transition-colors group-hover:border-emerald-200/20 group-hover:bg-emerald-200/[0.07] group-hover:text-emerald-100">
                     <Icon className="size-4" aria-hidden="true" />
@@ -123,7 +126,7 @@ export function CommandPalette() {
                     <span className="mt-0.5 block truncate text-[11px] text-slate-500">{item.detail}</span>
                   </span>
                   <ArrowRight className="size-3.5 text-slate-600 transition group-hover:translate-x-0.5 group-hover:text-emerald-200" aria-hidden="true" />
-                </Link>
+                </button>
               );
             }) : (
               <p className="px-4 py-10 text-center text-sm text-slate-400">

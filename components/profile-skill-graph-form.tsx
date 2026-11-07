@@ -5,82 +5,36 @@ import { useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
-import {
-  LiveIdCard,
-  type ProfileSocialStats,
-  type ProfileSocialUsers,
-} from "@/components/live-id-card";
-import { ToggleChip, toggleInList } from "@/components/toggle-chip";
+import { ProfileStatsCard, type ProfileStats } from "@/components/profile-stats-card";
 import { UserAvatar } from "@/components/user-avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  DOMAIN_INTERESTS,
-  SKILLS_I_HAVE,
-  SKILLS_I_WANT,
-  STARTER_PROFILE,
-} from "@/lib/catalog";
+import { STARTER_PROFILE } from "@/lib/catalog";
 import { displayName, formatUsername } from "@/lib/profile";
 import { liveStateFromDraft } from "@/lib/profile-payload";
 import type { Profile } from "@/lib/types";
 import { profileSchema, type ProfileValues } from "@/lib/validation/schemas";
 import { cn } from "@/lib/utils";
-
-function SkillSection({
-  title,
-  description,
-  options,
-  selected,
-  onToggle,
-}: {
-  title: string;
-  description: string;
-  options: readonly string[];
-  selected: string[];
-  onToggle: (value: string) => void;
-}) {
-  return (
-    <section className="glass rounded-xl p-5">
-      <h2 className="text-sm font-medium text-white">{title}</h2>
-      <p className="mt-1 text-xs text-slate-400">{description}</p>
-      <div className="mt-4 flex flex-wrap gap-2">
-        {options.map((option) => (
-          <ToggleChip
-            key={option}
-            selected={selected.includes(option)}
-            onClick={() => onToggle(option)}
-            className="px-3 py-1 text-xs"
-          >
-            {option}
-          </ToggleChip>
-        ))}
-      </div>
-    </section>
-  );
-}
+import { SkillPicker } from "@/components/skill-picker";
 
 export function ProfileSkillGraphForm({
   mode,
   username,
   stats,
-  socialUsers,
   draft,
   onDraftChange,
   saving,
-  saved,
   toast,
   submitLabel,
   onSubmit,
 }: {
   mode: "onboarding" | "edit";
   username: string;
-  stats?: ProfileSocialStats;
-  socialUsers?: ProfileSocialUsers;
+  stats?: ProfileStats;
   draft: Profile;
   onDraftChange: (partial: Partial<Profile>) => void;
   saving: boolean;
-  saved: boolean;
   toast: string | null;
   submitLabel: string;
   onSubmit: (values: ProfileValues) => Promise<void>;
@@ -221,7 +175,6 @@ export function ProfileSkillGraphForm({
                       setValue("displayName", STARTER_PROFILE.name, { shouldDirty: true });
                       setSkills("skillsHave", [...STARTER_PROFILE.canTeach]);
                       setSkills("skillsLearn", [...STARTER_PROFILE.wantsToLearn]);
-                      setSkills("domainInterests", [...STARTER_PROFILE.domains]);
                     })()
                   }
                 >
@@ -233,37 +186,22 @@ export function ProfileSkillGraphForm({
           </div>
         </section> : null}
 
-        {(!isOnboarding || onboardingStep === 0) ? <SkillSection
-          title="Skills I Have"
-          description="What you can teach a partner this week."
-          options={SKILLS_I_HAVE}
+        {(!isOnboarding || onboardingStep === 0) ? <SkillPicker
+          title="Skills I can offer"
           selected={live.skillsHave}
-          onToggle={(value) => {
-            const next = toggleInList(live.skillsHave, value);
+          otherSelected={live.skillsLearn}
+          onChange={(next) => {
             onDraftChange({ canTeach: next });
             setSkills("skillsHave", next);
           }}
         /> : null}
-        {(!isOnboarding || onboardingStep === 1) ? <SkillSection
-          title="Skills I Want to Learn"
-          description="What you would like to learn from another member."
-          options={SKILLS_I_WANT}
+        {(!isOnboarding || onboardingStep === 1) ? <SkillPicker
+          title="Skills I want to learn"
           selected={live.skillsLearn}
-          onToggle={(value) => {
-            const next = toggleInList(live.skillsLearn, value);
+          otherSelected={live.skillsHave}
+          onChange={(next) => {
             onDraftChange({ wantsToLearn: next });
             setSkills("skillsLearn", next);
-          }}
-        /> : null}
-        {(!isOnboarding || onboardingStep === 1) ? <SkillSection
-          title="Domain Interests"
-          description="The areas where you are excited to share skills and learn."
-          options={DOMAIN_INTERESTS}
-          selected={live.domainInterests}
-          onToggle={(value) => {
-            const next = toggleInList(live.domainInterests, value);
-            onDraftChange({ domains: next });
-            setSkills("domainInterests", next);
           }}
         /> : null}
 
@@ -273,10 +211,10 @@ export function ProfileSkillGraphForm({
               <Sparkles className="size-5" />
             </span>
             <h2 className="mt-5 font-heading text-2xl font-semibold tracking-tight text-white">
-              Your next collaborator is one step away.
+              Your next learning partner is one step away.
             </h2>
             <p className="mt-2 max-w-lg text-sm leading-6 text-slate-400">
-              We’ll use your teaching skills, learning goals, and interests to help you find a thoughtful match.
+              We’ll use your offered skills and learning goals to help you find a useful match.
             </p>
             <div className="mt-6 grid gap-4 sm:grid-cols-2">
               <div>
@@ -319,17 +257,7 @@ export function ProfileSkillGraphForm({
       </div>
 
       <aside className="lg:col-span-1">
-        <LiveIdCard
-          username={username}
-          live={live}
-          stats={stats}
-          socialUsers={socialUsers}
-          saving={saving || isSubmitting}
-          saved={saved}
-          submitLabel={submitLabel}
-          isOnboarding={isOnboarding}
-          showSubmit={!isOnboarding}
-        />
+        <ProfileStatsCard stats={stats ?? { sessions: 0, credits: 2, rating: 0}} />
       </aside>
     </form>
   );

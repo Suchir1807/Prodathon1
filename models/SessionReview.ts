@@ -17,7 +17,7 @@ const SessionReviewSchema = new Schema<ISessionReview>(
     reviewerId: { type: Schema.Types.ObjectId, ref: "User", required: true },
     recipientId: { type: Schema.Types.ObjectId, ref: "User", required: true },
     rating: { type: Number, min: 1, max: 5, required: true },
-    feedback: { type: String, trim: true, required: true, maxlength: 2000 },
+    feedback: { type: String, trim: true, default: "", maxlength: 2000 },
     skills: { type: [String], default: [] },
   },
   { timestamps: true },

@@ -1,5 +1,5 @@
-import { ExchangesPage } from "@/components/exchange-pages";
+import { redirect } from "next/navigation";
 
 export default function ExchangesRoute() {
-  return <ExchangesPage />;
+  redirect("/sessions");
 }

@@ -48,6 +48,7 @@ export async function GET() {
           exchangeId: notification.exchangeId?.toString() ?? null,
           sessionId: notification.sessionId?.toString() ?? null,
           sessionRoomId: notification.sessionRoomId?.toString() ?? null,
+          helpRequestId: notification.helpRequestId?.toString() ?? null,
           askId: notification.askId?.toString() ?? null,
           resourceId: notification.resourceId?.toString() ?? null,
           createdAt: notification.createdAt.toISOString(),

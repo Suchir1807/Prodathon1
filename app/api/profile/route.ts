@@ -7,25 +7,10 @@ import connectDB from "@/lib/mongodb";
 import { ensureCreditAccount, getCreditBalance } from "@/lib/credit-balance";
 import Session from "@/models/Session";
 import SkillBadge from "@/models/SkillBadge";
+import SessionReview from "@/models/SessionReview";
+import CreditLedger from "@/models/CreditLedger";
 import { profileSchema } from "@/lib/validation/schemas";
 import User from "@/models/User";
-
-type PopulatedProfileUser = {
-  _id: Types.ObjectId;
-  username?: string;
-  displayName?: string;
-  name?: string;
-  avatar?: string;
-};
-
-function serializeSocialUsers(users: PopulatedProfileUser[] | undefined) {
-  return (users ?? []).map((user) => ({
-    id: user._id.toString(),
-    username: user.username ?? "",
-    displayName: user.displayName?.trim() || user.name?.trim() || user.username || "",
-    avatar: user.avatar ?? null,
-  }));
-}
 
 function asStringList(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
@@ -37,7 +22,9 @@ function asStringList(value: unknown): string[] {
 
 function profileBody(user: {
   displayName?: string | null;
+  bio?: string | null;
   skillsHave?: string[] | null;
+  skillsHaveLevels?: Map<string, string> | Record<string, string> | null;
   skillsLearn?: string[] | null;
   domainInterests?: string[] | null;
   isProfileComplete?: boolean | null;
@@ -46,7 +33,11 @@ function profileBody(user: {
   return {
     username: user.username ?? "",
     displayName: user.displayName ?? "",
+    bio: user.bio ?? "",
     skillsHave: asStringList(user.skillsHave),
+    skillsHaveLevels: user.skillsHaveLevels instanceof Map
+      ? Object.fromEntries(user.skillsHaveLevels)
+      : user.skillsHaveLevels ?? {},
     skillsLearn: asStringList(user.skillsLearn),
     domainInterests: asStringList(user.domainInterests),
     isProfileComplete: Boolean(user.isProfileComplete && user.skillsHave?.length && user.skillsLearn?.length),
@@ -63,47 +54,87 @@ export async function GET() {
   try {
     await connectDB();
     const user = await User.findOne({ username })
-      .select("username displayName skillsHave skillsLearn domainInterests isProfileComplete followers following")
-      .populate<{ followers: PopulatedProfileUser[] }>(
-        "followers",
-        "name avatar username displayName",
-      )
-      .populate<{ following: PopulatedProfileUser[] }>(
-        "following",
-        "name avatar username displayName",
-      )
+      .select("username displayName bio skillsHave skillsHaveLevels skillsLearn domainInterests isProfileComplete followers following timezone")
       .lean();
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const followers = serializeSocialUsers(user.followers);
-    const following = serializeSocialUsers(user.following);
     await ensureCreditAccount(user._id);
-    const [sessions, badges, creditBalance] = await Promise.all([
-      Session.countDocuments({ participants: user._id, status: "completed" }),
+    const [completedSessions, badges, creditBalance, ledger, receivedReviews] = await Promise.all([
+      Session.find({ participants: user._id, status: "completed" }).select("_id completedAt").sort({ completedAt: -1 }).lean(),
       SkillBadge.find({ userId: user._id })
         .sort({ earnedAt: -1 })
         .limit(30)
-        .populate("sessionId", "topic")
         .lean(),
       getCreditBalance(user._id),
+      CreditLedger.find({ userId: user._id }).sort({ createdAt: -1 }).limit(8).lean(),
+      SessionReview.find({ recipientId: user._id })
+        .sort({ createdAt: -1 })
+        .limit(10)
+        .populate("reviewerId", "username displayName")
+        .populate("sessionId", "topic")
+        .lean(),
     ]);
+    const sessions = completedSessions.length;
+    const averageRating = receivedReviews.length
+      ? receivedReviews.reduce((sum, review) => sum + review.rating, 0) / receivedReviews.length
+      : 0;
+    const completedIds = new Set(completedSessions.map((item) => item._id.toString()));
+    const verifiedBadges = badges.filter((badge) => completedIds.has(badge.sessionId.toString()));
+    const skillSessions = new Map<string, Set<string>>();
+    for (const badge of verifiedBadges) {
+      const sessionIds = skillSessions.get(badge.skill) ?? new Set<string>();
+      sessionIds.add(badge.sessionId.toString());
+      skillSessions.set(badge.skill, sessionIds);
+    }
+    const ratingsBySession = new Map<string, number[]>();
+    for (const review of receivedReviews) {
+      const sessionId = (review.sessionId as unknown as { _id?: Types.ObjectId } | null)?._id?.toString();
+      if (sessionId) ratingsBySession.set(sessionId, [...(ratingsBySession.get(sessionId) ?? []), review.rating]);
+    }
+    const streak = calculateStreak(completedSessions.map((item) => item.completedAt ?? new Date(0)));
     return NextResponse.json({
       ...profileBody(user),
       socialStats: {
         sessions,
-        followers: followers.length,
-        following: following.length,
       },
+      rating: averageRating,
+      streak,
       creditBalance,
-      socialUsers: { followers, following },
-      badges: badges.map((badge) => ({
+      timezone: user.timezone ?? "UTC",
+      ledger: ledger.map((entry) => ({
+        id: entry._id.toString(),
+        amount: entry.amount,
+        type: entry.type,
+        createdAt: entry.createdAt.toISOString(),
+      })),
+      badges: verifiedBadges.map((badge) => ({
         id: badge._id.toString(),
         skill: badge.skill,
-        sessionTopic: (badge.sessionId as unknown as { topic?: string } | null)?.topic ?? "Completed Session",
+        sessionTopic: "Completed Session",
         verifiedAt: badge.earnedAt.toISOString(),
       })),
+      verifiedSkills: [...skillSessions].map(([skill, sessionIds]) => {
+        const ratings = [...sessionIds].flatMap((id) => ratingsBySession.get(id) ?? []);
+        return {
+          skill,
+          sessionCount: sessionIds.size,
+          averageRating: ratings.length ? ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length : 0,
+        };
+      }),
+      reviews: receivedReviews.map((review) => {
+        const reviewer = review.reviewerId as unknown as { username?: string; displayName?: string } | null;
+        const sessionInfo = review.sessionId as unknown as { topic?: string } | null;
+        return {
+          id: review._id.toString(),
+          reviewerName: reviewer?.displayName?.trim() || reviewer?.username || "Skillin member",
+          topic: sessionInfo?.topic ?? "Completed Session",
+          rating: review.rating,
+          feedback: review.feedback,
+          createdAt: review.createdAt.toISOString(),
+        };
+      }),
     });
   } catch (error) {
     console.error("Profile GET error:", error);
@@ -132,16 +163,19 @@ export async function PUT(request: Request) {
         { status: 400 },
       );
     }
-    const { displayName, skillsHave, skillsLearn, domainInterests } = result.data;
+    const { displayName, bio, skillsHave, skillsHaveLevels, skillsLearn, domainInterests, timezone } = result.data;
 
     await connectDB();
     const user = await User.findOneAndUpdate(
       { username: session?.user?.name?.trim().toLowerCase() },
       {
         displayName,
+        bio,
         skillsHave,
+        skillsHaveLevels,
         skillsLearn,
-        domainInterests,
+        domainInterests: domainInterests ?? [],
+        timezone,
         isProfileComplete: true,
       },
       { new: true },
@@ -149,6 +183,22 @@ export async function PUT(request: Request) {
 
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    function calculateStreak(dates: Date[]) {
+      const days = new Set(dates.map((date) => {
+        const day = new Date(date);
+        return new Date(day.getFullYear(), day.getMonth(), day.getDate()).getTime();
+      }));
+      let cursor = new Date();
+      cursor = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate());
+      if (!days.has(cursor.getTime())) cursor.setDate(cursor.getDate() - 1);
+      let streak = 0;
+      while (days.has(cursor.getTime())) {
+        streak += 1;
+        cursor.setDate(cursor.getDate() - 1);
+      }
+      return streak;
     }
 
     return NextResponse.json({

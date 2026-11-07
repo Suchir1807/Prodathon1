@@ -1,6 +1,13 @@
 import mongoose, { type Model, Schema, Types } from "mongoose";
 
-export type CreditEntryType = "starter" | "session_earned" | "session_spent" | "session_refund" | "adjustment";
+export type CreditEntryType =
+  | "starter"
+  | "session_hold"
+  | "session_release"
+  | "session_earned"
+  | "session_spent"
+  | "session_refund"
+  | "adjustment";
 
 export interface ICreditLedgerEntry {
   userId: Types.ObjectId;
@@ -18,7 +25,11 @@ const CreditLedgerSchema = new Schema<ICreditLedgerEntry>(
     counterpartyId: { type: Schema.Types.ObjectId, ref: "User", default: null },
     sessionId: { type: Schema.Types.ObjectId, ref: "Session", default: null },
     amount: { type: Number, required: true, min: -180, max: 180 },
-    type: { type: String, enum: ["starter", "session_earned", "session_spent", "session_refund", "adjustment"], required: true },
+    type: {
+      type: String,
+      enum: ["starter", "session_hold", "session_release", "session_earned", "session_spent", "session_refund", "adjustment"],
+      required: true,
+    },
     idempotencyKey: { type: String, required: true, maxlength: 120 },
   },
   { timestamps: { createdAt: true, updatedAt: false } },

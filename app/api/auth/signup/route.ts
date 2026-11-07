@@ -34,10 +34,10 @@ export async function POST(request: Request) {
         const existing = await User.findOne({ username }).select("_id").session(transaction).lean();
         if (existing) throw new Error("USERNAME_TAKEN");
         const [user] = await User.create([{ username, password: hashed }], { session: transaction });
-        await CreditAccount.create([{ userId: user._id, balance: 60 }], { session: transaction });
+        await CreditAccount.create([{ userId: user._id, balance: 2 }], { session: transaction });
         await CreditLedger.create([{
           userId: user._id,
-          amount: 60,
+          amount: 2,
           type: "starter",
           idempotencyKey: "starter:welcome",
         }], { session: transaction });

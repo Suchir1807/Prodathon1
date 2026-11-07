@@ -10,7 +10,7 @@ export interface ICreditAccount {
 const CreditAccountSchema = new Schema<ICreditAccount>(
   {
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true, unique: true },
-    balance: { type: Number, required: true, min: 0, default: 60 },
+    balance: { type: Number, required: true, min: 0, default: 2 },
   },
   { timestamps: true },
 );

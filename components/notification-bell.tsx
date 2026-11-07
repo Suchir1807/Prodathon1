@@ -8,7 +8,7 @@ import { UserAvatar } from "@/components/user-avatar";
 
 type FollowNotification = {
   id: string;
-  type: "follow" | "exchange_invite" | "exchange_started" | "ask_matched" | "session_booked" | "session_reminder" | "session_completed" | "new_message" | "session_review";
+  type: "follow" | "exchange_invite" | "exchange_started" | "ask_matched" | "session_booked" | "session_reminder" | "session_completed" | "new_message" | "session_review" | "help_now_offer";
   isRead: boolean;
   createdAt: string;
   exchangeId: string | null;
@@ -16,6 +16,7 @@ type FollowNotification = {
   sessionRoomId: string | null;
   askId: string | null;
   resourceId: string | null;
+  helpRequestId: string | null;
   sender: {
     id: string;
     username: string;
@@ -182,19 +183,20 @@ export function NotificationBell() {
                     sender.isFollowing || followingBack.includes(sender.id);
                   const copy: Record<FollowNotification["type"], string> = {
                     follow: "started following you.",
-                    exchange_invite: "invited you to start an Exchange.",
-                    exchange_started: "accepted your Exchange invitation.",
-                    ask_matched: "accepted your Ask. Your Exchange is ready.",
+                    exchange_invite: "sent you a partner request.",
+                    exchange_started: "accepted your partner request.",
+                    ask_matched: "accepted your Ask. You can arrange a Session.",
                     session_booked: "booked a Session with you.",
                     session_reminder: "has an upcoming Session with you.",
                     session_completed: "marked your Session complete.",
                     new_message: "sent you a message.",
                     session_review: "left a Session review for you.",
+                    help_now_offer: "received a Help Now request from you.",
                   };
                   const destination = notification.sessionRoomId
                     ? `/session-room/${encodeURIComponent(notification.sessionRoomId)}`
                     : notification.exchangeId
-                      ? "/exchanges"
+                      ? "/sessions"
                       : notification.askId
                         ? "/asks"
                         : `/profile/${encodeURIComponent(sender.id)}`;

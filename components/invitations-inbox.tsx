@@ -84,7 +84,7 @@ export function InvitationsInbox() {
 
       if (status === "accepted") {
         setOpen(false);
-        if (data.exchangeId) router.push(`/exchanges`);
+        if (data.exchangeId) router.push(`/sessions`);
         return;
       }
 
@@ -127,7 +127,7 @@ export function InvitationsInbox() {
           />
           <div className="absolute right-0 z-50 mt-2 w-80 rounded-xl border border-white/10 bg-[#0e1526]/95 p-3 shadow-xl backdrop-blur-xl">
             <p className="px-1 text-xs font-medium tracking-wide text-slate-400 uppercase">
-              Exchange invitations
+              Partner requests
             </p>
             {actionError ? <p role="alert" className="mt-2 px-1 text-xs text-rose-400">{actionError}</p> : null}
             {loading ? (

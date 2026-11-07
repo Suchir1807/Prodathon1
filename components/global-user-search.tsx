@@ -66,27 +66,27 @@ export function GlobalUserSearch() {
         }}
         onFocus={() => setFocused(true)}
         onBlur={() => window.setTimeout(() => setFocused(false), 120)}
-        placeholder="Search founders"
-        aria-label="Search founders or skills"
+        placeholder="Search people or skills"
+        aria-label="Search people or skills"
         className="h-9 border-white/10 bg-white/[0.03] pl-9 text-sm"
       />
       {showResults ? (
         <div
-          id="founder-search-results"
-          aria-label="Founder search results"
+          id="people-search-results"
+          aria-label="People search results"
           aria-live="polite"
           className="absolute top-full right-0 left-0 z-50 mt-2 overflow-hidden rounded-lg border border-white/10 bg-[#10182b] shadow-2xl"
         >
           {loading ? (
             <p className="px-3 py-3 text-xs text-slate-400">Searching…</p>
           ) : users.length ? (
-            <ul aria-label="Founders">
+            <ul aria-label="People">
               {users.map((user) => {
                 const name = user.displayName.trim() || formatUsername(user.username);
                 return (
                   <li key={user.id}>
                     <Link
-                      href={`/profile/${user.id}`}
+                      href={`/u/${encodeURIComponent(user.username)}`}
                       onClick={() => {
                         setQuery("");
                         setFocused(false);
@@ -108,7 +108,7 @@ export function GlobalUserSearch() {
             </ul>
           ) : (
             <p className="flex items-center gap-2 px-3 py-3 text-xs text-slate-400">
-              <UserRound className="size-4" /> No founders found
+              <UserRound className="size-4" /> No people found
             </p>
           )}
         </div>

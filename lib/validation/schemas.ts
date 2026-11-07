@@ -35,12 +35,27 @@ export const signupRequestSchema = signupBaseSchema.pick({
   password: true,
 });
 
+const skillListSchema = z.array(z.string().trim().min(1).max(80)).min(1).max(30);
+
 export const profileSchema = z.object({
   displayName: z.string().trim().max(60, "Display name must be 60 characters or fewer."),
-  skillsHave: z.array(z.string().trim().min(1).max(80)).min(1, "Add at least one skill you can offer.").max(30),
-  skillsLearn: z.array(z.string().trim().min(1).max(80)).min(1, "Add at least one skill you want to learn.").max(30),
-  domainInterests: z.array(z.string().trim().min(1).max(80)).max(30),
-}).strict();
+  bio: z.string().trim().max(500).default(""),
+  skillsHave: skillListSchema,
+  skillsHaveLevels: z.record(z.string(), z.enum(["Beginner", "Intermediate", "Advanced"])).default({}),
+  skillsLearn: skillListSchema,
+  domainInterests: z.array(z.string().trim().min(1).max(80)).max(30).default([]),
+  timezone: z.string().trim().min(1).max(80).default("UTC"),
+}).strict().superRefine((profile, context) => {
+  const offered = new Set(profile.skillsHave.map((skill) => skill.toLocaleLowerCase()));
+  const conflict = profile.skillsLearn.find((skill) => offered.has(skill.toLocaleLowerCase()));
+  if (conflict) {
+    context.addIssue({
+      code: "custom",
+      message: `"${conflict}" cannot be both an offered skill and a skill you want to learn.`,
+      path: ["skillsLearn"],
+    });
+  }
+});
 
 export const askSchema = z.object({
   skillOffered: z.string().trim().min(1).max(80),
@@ -82,7 +97,7 @@ export const sessionBookingSchema = z.object({
 }).strict();
 
 export const sessionStatusSchema = z.object({
-  status: z.enum(["completed", "cancelled"]),
+  status: z.enum(["completed", "cancelled", "no_show"]),
 }).strict();
 
 export const sessionRoomUpdateSchema = z.object({
@@ -92,9 +107,40 @@ export const sessionRoomUpdateSchema = z.object({
 
 export const sessionReviewSchema = z.object({
   rating: z.number().int().min(1).max(5),
-  feedback: z.string().trim().min(10).max(2000),
+  feedback: z.string().trim().max(2000).default(""),
   skills: z.array(z.string().trim().min(1).max(80)).max(12).default([])
     .refine((skills) => new Set(skills).size === skills.length, "Skills must be unique."),
+}).strict();
+
+export const helpNowRequestSchema = z.object({
+  problem: z.string().trim().min(5).max(1000),
+  urgency: z.enum(["now", "within_hour"]).default("now"),
+  durationMinutes: z.union([z.literal(15), z.literal(30)]).default(15),
+}).strict();
+
+export const availabilitySchema = z.object({
+  available: z.boolean(),
+  durationMinutes: z.union([z.literal(30), z.literal(60), z.literal(120)]).default(60),
+  availableFor: z.array(z.string().trim().min(1).max(80)).max(30).default([]),
+  timezone: z.string().trim().min(1).max(80).optional(),
+  quietHoursStart: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+  quietHoursEnd: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+  dailyHelpNowLimit: z.number().int().min(1).max(20).optional(),
+}).strict();
+
+export const helpOfferResponseSchema = z.object({
+  action: z.enum(["accept", "decline"]),
+}).strict();
+
+export const helpReportSchema = z.object({
+  requestId: z.string().regex(/^[a-f\d]{24}$/i),
+  reportedUserId: z.string().regex(/^[a-f\d]{24}$/i),
+  reason: z.string().trim().min(5).max(500),
+  block: z.boolean().default(false),
+}).strict();
+
+export const helpExtendSchema = z.object({
+  consent: z.literal(true),
 }).strict();
 
 export const messageCreateSchema = z.object({

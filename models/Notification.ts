@@ -9,7 +9,8 @@ export type NotificationType =
   | "session_reminder"
   | "session_completed"
   | "new_message"
-  | "session_review";
+  | "session_review"
+  | "help_now_offer";
 
 export interface INotification {
   recipient: Types.ObjectId;
@@ -20,6 +21,7 @@ export interface INotification {
   sessionId?: Types.ObjectId;
   askId?: Types.ObjectId;
   sessionRoomId?: Types.ObjectId;
+  helpRequestId?: Types.ObjectId;
   resourceId?: Types.ObjectId;
   dedupeKey?: string;
   createdAt: Date;
@@ -42,6 +44,7 @@ const NotificationSchema = new Schema<INotification>(
         "session_completed",
         "new_message",
         "session_review",
+        "help_now_offer",
       ],
       default: "follow",
       required: true,
@@ -50,6 +53,7 @@ const NotificationSchema = new Schema<INotification>(
     sessionId: { type: Schema.Types.ObjectId, ref: "Session" },
     askId: { type: Schema.Types.ObjectId, ref: "Ask" },
     sessionRoomId: { type: Schema.Types.ObjectId, ref: "SessionRoom" },
+    helpRequestId: { type: Schema.Types.ObjectId, ref: "HelpRequest" },
     resourceId: { type: Schema.Types.ObjectId },
     dedupeKey: { type: String, maxlength: 180 },
     isRead: { type: Boolean, default: false, required: true },

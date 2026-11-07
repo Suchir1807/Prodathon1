@@ -19,9 +19,9 @@ const GUIDE_CARDS = [
   {
     number: "01",
     title: "Offer & Want",
-    eyebrow: "Your Skill Passport",
+    eyebrow: "Your Profile",
     description:
-      "Share the skills you can teach and the skills you want to learn. Your Skill Passport helps peers find a useful, complementary exchange.",
+      "Share skills you can offer and skills you want to learn so peers can find a useful match.",
     details: [
       "Keep your offered and wanted skills up to date.",
       "Earn verified skill badges through peer reviews.",
@@ -29,7 +29,7 @@ const GUIDE_CARDS = [
     icon: ChartNoAxesCombined,
     accent: "emerald",
     href: "/profile",
-    linkLabel: "Edit your Skill Passport",
+    linkLabel: "Edit your Profile",
   },
   {
     number: "02",
@@ -39,7 +39,7 @@ const GUIDE_CARDS = [
       "Find a peer with complementary skills, or publish an Ask that explains what you can offer and want to learn.",
     details: [
       "Compare overlapping interests and useful skill swaps.",
-      "Accept an Ask to start an ongoing Exchange.",
+      "Accept an Ask to arrange a learning Session.",
     ],
     icon: UsersRound,
     accent: "cyan",
@@ -64,24 +64,24 @@ const GUIDE_CARDS = [
   {
     number: "04",
     title: "Learn & Teach",
-    eyebrow: "An ongoing Exchange",
+    eyebrow: "Learn together",
     description:
-      "Keep a shared weekly goal, meet regularly, and use your SessionRoom for private chat and shared notes.",
+      "Meet regularly and use your Session room for private chat and shared notes.",
     details: [
-      "Pause or end an Exchange whenever your rhythm changes.",
-      "Keep Session notes and messages with the partnership.",
+      "Keep your scheduled Sessions and notes together.",
+      "Continue conversations in Messages.",
     ],
     icon: Workflow,
     accent: "violet",
-    href: "/exchanges",
-    linkLabel: "Manage Exchanges",
+    href: "/sessions",
+    linkLabel: "View Sessions",
   },
   {
     number: "05",
     title: "Review & Grow",
     eyebrow: "Recognize what you learn",
     description:
-      "After a completed Session, leave thoughtful feedback and recognize skills your partner shared. Reviews contribute verified badges to the Skill Passport.",
+      "After a completed Session, leave thoughtful feedback and recognize skills your partner shared. Reviews contribute verified skills and badges to the Profile.",
     details: [
       "Rate the experience and leave useful feedback.",
       "Make learning progress visible to your community.",
@@ -89,7 +89,7 @@ const GUIDE_CARDS = [
     icon: BadgeCheck,
     accent: "fuchsia",
     href: "/profile",
-    linkLabel: "View your Skill Passport",
+    linkLabel: "View your Profile",
   },
 ] as const;
 
@@ -257,7 +257,7 @@ export function InfoGuide() {
           <div>
             <h2 className="text-sm font-semibold text-white">Ready to make your next move?</h2>
             <p className="mt-1 text-xs leading-5 text-slate-400">
-              Set up your Skill Passport, meet a learning partner, and start exchanging knowledge.
+              Set up your Profile, meet a learning partner, and start sharing skills.
             </p>
           </div>
         </div>

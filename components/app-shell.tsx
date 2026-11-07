@@ -10,8 +10,6 @@ import {
   LayoutDashboard,
   Menu,
   MessageSquare,
-  Handshake,
-  BookOpen,
   CircleHelp,
   PanelLeftClose,
   PanelLeftOpen,
@@ -25,6 +23,7 @@ import { GlobalUserSearch } from "@/components/global-user-search";
 import { NotificationBell } from "@/components/notification-bell";
 import { UserAvatar } from "@/components/user-avatar";
 import { CommandPalette } from "@/components/command-palette";
+import { AvailabilityToggle, HelpNowButton, HelpNowController } from "@/components/help-now";
 import { useProfile } from "@/components/profile-provider";
 import { unreadTotal } from "@/lib/chats";
 import { displayName } from "@/lib/profile";
@@ -32,24 +31,22 @@ import { cn } from "@/lib/utils";
 
 const LINKS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/exchanges", label: "Exchanges", icon: Handshake },
   { href: "/sessions", label: "Sessions", icon: Clock3 },
   { href: "/asks", label: "Asks", icon: CircleHelp },
   { href: "/find-partners", label: "Find Partners", icon: Users },
   { href: "/messages", label: "Messages", icon: MessageSquare },
-  { href: "/profile", label: "Skill Passport", icon: BookOpen },
+  { href: "/profile", label: "Profile", icon: Users },
   { href: "/info", label: "Info", icon: Info },
 ];
 
 const TITLES: Record<string, string> = {
   "/dashboard": "Dashboard",
-  "/exchanges": "Exchanges",
   "/sessions": "Sessions",
   "/asks": "Asks",
   "/find-partners": "Find Partners",
   "/messages": "Messages",
   "/info": "How it Works",
-  "/profile": "Skill Passport",
+  "/profile": "Profile",
 };
 
 const AUTH_ROUTES = new Set(["/login", "/signup", "/logout", "/onboarding"]);
@@ -137,10 +134,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="hidden sm:block">
             <GlobalUserSearch />
           </div>
+          <AvailabilityToggle />
+          <HelpNowButton size="sm" className="h-8 shrink-0 px-2.5 text-xs" />
           <CommandPalette />
           <NotificationBell />
           <InvitationsInbox />
         </header>
+        <HelpNowController />
         <main id="main-content" key={pathname} tabIndex={-1}>{children}</main>
       </div>
     </div>
